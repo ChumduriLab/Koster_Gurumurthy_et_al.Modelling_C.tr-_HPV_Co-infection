@@ -19,8 +19,10 @@ Thomas F Meyer, Cindrilla Chumduri*. (doi: https://doi.org/10.1101/2021.04.15.43
 
 
 
+
+
 ```
-Overview:
+OVERVIEW:
 └── Data: Pre-processed, Differential Exp., GSEA RData files are stashed here.
 └── Code: Contains scripts for microarray analysis used in this manuscript.
         └── Human Ectocervical Organoids
@@ -46,6 +48,7 @@ Overview:
 Contact:
 *********
 Please email the corresponding author in the main manuscript for other requests!
+
 For specific queries related to this repository, please contact:
 https://github.com/ChumduriLab
 www.chumdurilab.org
@@ -77,7 +80,8 @@ File Description:
          ├── 04_GSEA_plots.Rmd: Snippets to visualize the obtained GSEA results.
          └── 05_AdditionalVisualizations_2D.Rmd: Generating heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
          ├── 06_AdditionalVisualizations_3D.Rmd: Generating heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
-         └── 07_Helper_functions.R:Custom functions that can be utilized for mapping agilent probe ID to gene symbols, symbols to entrez ID and also for additional data 						representation.	    
+         └── 07_Helper_functions.R:Custom functions that can be utilized for mapping agilent probe ID to gene symbols, symbols to entrez ID and also 
+	 					for additional datarepresentation.	    
          └── 08_External_CIN_Analysis.R: Profiling cervical intraepithelial neoplasia (CIN) characteristics in coinfections by analyzing the microarray 
 						dataset of laser-captured epithelium from 128 CIN samples downloaded from the GEO 
 						(accession no. GSE63514; Johan A. den Boon et.al 2015, PMID: 26056290)  	
