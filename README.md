@@ -121,7 +121,7 @@ Folders:
 ### File Description:
 
 1. R scripts: 
-     - ***00_Preprocessing_and_QC.Rmd***: Microarray data QC and preprocessing of hCEcto E6E7 organoids with or without Ctr infection.
+     - ***00_Preprocessing_and_QC.Rmd***: Microarray data quality control (QC) and pre-processing of hCEcto E6E7 organoids with or without Ctr infection.
       	 
      - ***01_Diff_Expression_analysis.Rmd***: To perform differential expression (DE) analysis on hCEcto E6E7 organoids with or without Ctr infection. 
       
@@ -138,7 +138,7 @@ Folders:
      - ***07_Helper_functions.R***: Custom functions that can be utilized for mapping agilent probe ID to gene symbols, symbols to entrez ID and for drawing heatmap, expression barplot and fold change barplots (optionally stores TIFF image of final FC barplot) 	    					
 						
      - ***08_External_CIN_Analysis.R***: Profiling cervical intraepithelial neoplasia (CIN) characteristics in coinfection by analyzing external CIN microarray 
-dataset. Contains all information in order starting from data pre-processing, quality control, normalization, DE until visualization of results (Fig.3i-k).  	
+dataset. Contains all information in order starting from data pre-processing, QC, normalization, DE until visualization of results (Fig.3i-k).  	
 
 
 
