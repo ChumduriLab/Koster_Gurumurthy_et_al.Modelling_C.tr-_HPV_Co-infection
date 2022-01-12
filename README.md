@@ -36,7 +36,7 @@ Folders:
 └── Data: Pre-processed, Differential Exp., GSEA RData files are stashed here.
 └── Code: Contains scripts for microarray analysis used in this manuscript.
         └── Human Ectocervical Organoids
-            │       ├── * 00_Preprocessing_and_QC.Rmd *
+            │       ├── 00_Preprocessing_and_QC.Rmd
             │       └── 01_Diff_Expression_analysis.Rmd
             │       ├── 02_Ctr_HPV_transcription_modules_v2.Rmd
             │       └── 03_GSEA_Analysis.Rmd
@@ -87,13 +87,12 @@ https://github.com/ChumduriLab
 
 
 
-$~~~~~~~~~~~$
 
 
 
 
 ### File Description:
-```
+
 └── R scripts: 
          ├── 00_Preprocessing_and_QC.Rmd: Microarray data QC and Preprocessing for hCEcto E6E7 organoids with or without Ctr infection.	 
          └── 01_Diff_Expression_analysis.Rmd: To perform Differential expression analysis on hCEcto E6E7 organoids with or without Ctr infection.	 
@@ -107,7 +106,7 @@ $~~~~~~~~~~~$
          └── 08_External_CIN_Analysis.R: Profiling cervical intraepithelial neoplasia (CIN) characteristics in coinfections by analyzing the microarray 
 						dataset of laser-captured epithelium from 128 CIN samples downloaded from the GEO 
 						(accession no. GSE63514; Johan A. den Boon et.al 2015, PMID: 26056290)  	
-```
+
 
 
 
