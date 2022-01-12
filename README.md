@@ -125,7 +125,7 @@ Folders:
       	 
      - ***01_Diff_Expression_analysis.Rmd***: To perform Differential expression analysis on hCEcto E6E7 organoids with or without Ctr infection. 
       
-     - ***02_Ctr_HPV_transcription_modules_v2.Rmd***: To analyse gene sets to infer TF activity, Gene Ontology analyses for modules of Ctr-HPV-coinfection.	 
+     - ***02_Ctr_HPV_transcription_modules_v2.Rmd***: To infer TF activity, Gene Ontology (GO) terms for Ctr-HPV-coinfection conditions.	 
      
      - ***03_GSEA_Analysis.Rmd***: GSEA analysis on DGE results obtained for hCEcto E6E7 organoids with or without Ctr infection.
       
