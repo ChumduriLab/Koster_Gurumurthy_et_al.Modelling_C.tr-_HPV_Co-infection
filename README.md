@@ -30,7 +30,7 @@ the unique cellular microenvironment they create, potentially contributing to ne
 
 
 
-#### For more information, please read our manuscript published in Nature Communication:
+#### For more information, please read our manuscript published in ***Nature Communication:***
 	
 	
 
@@ -176,6 +176,8 @@ Please email the corresponding author in the main manuscript for other requests!
 https://github.com/ChumduriLab
 
 
+## Research Groups
+<a href="https://www.chumdurilab.org/" rel="Chumduri Lab"><img src="https://static.wixstatic.com/media/d77aac_9e37b3da06a741c1911114e7ea43fec5~mv2.jpg/v1/fill/w_1680,h_400,al_t,q_85,usm_0.66_1.00_0.01/d77aac_9e37b3da06a741c1911114e7ea43fec5~mv2.webp" height="100"></a>
 www.chumdurilab.org
 
 
