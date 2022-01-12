@@ -17,7 +17,7 @@ the unique cellular microenvironment they create, potentially contributing to ne
 
 
 
-[![Biological Theme](file:///F:/Stefanie_Revision/Capture.PNG)
+[![Biological Theme]()
 
 
 
