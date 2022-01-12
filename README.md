@@ -19,7 +19,7 @@ For more information, please read our manuscript published in Nature Communicati
 	
 	
 	
-Stefanie Koster, Rajendra Kumar Gurumurthy, Naveen Kumar, Pon Ganish Prakash, Jayabhuvaneshwari Dhanraj, Sofia Bayer, Hilmar Berger, 
+***Stefanie Koster, Rajendra Kumar Gurumurthy, Naveen Kumar, Pon Ganish Prakash, Jayabhuvaneshwari Dhanraj, Sofia Bayer, Hilmar Berger, 
 Shilpa Mary Kurian, Marina Drabkina, Hans-Joachim Mollenkopf, Christian Goosmann, Volker Brinkmann, Zachary Nagel, Mandy Mangler, 
 Thomas F Meyer, Cindrilla Chumduri*. (doi: https://doi.org/10.1101/2021.04.15.439996)
 
@@ -71,7 +71,7 @@ For specific queries related to this repository, please contact:
 https://github.com/ChumduriLab
 
 
-www.chumdurilab.org
+(www.chumdurilab.org)
 
 
 
@@ -99,14 +99,22 @@ www.chumdurilab.org
 File Description:
 └── R scripts: 
          ├── 00_Preprocessing_and_QC.Rmd: Microarray data QC and Preprocessing for hCEcto E6E7 organoids with or without Ctr infection.
+	 
          └── 01_Diff_Expression_analysis.Rmd: To perform Differential expression analysis on hCEcto E6E7 organoids with or without Ctr infection.
+	 
          ├── 02_Ctr_HPV_transcription_modules_v2.Rmd: To analyse gene sets to infer TF activity, Gene Ontology analyses for modules of Ctr-HPV-coinfection.
+	 
          └── 03_GSEA_Analysis.Rmd: GSEA analysis on DGE results obtained for hCEcto E6E7 organoids with or without Ctr infection.
+	 
          ├── 04_GSEA_plots.Rmd: Snippets to visualize the obtained GSEA results.
+	 
          └── 05_AdditionalVisualizations_2D.Rmd: Generating heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
+	 
          ├── 06_AdditionalVisualizations_3D.Rmd: Generating heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
+	 
          └── 07_Helper_functions.R:Custom functions that can be utilized for mapping agilent probe ID to gene symbols, symbols to entrez ID and also 
 	 					for additional datarepresentation.	    
+						
          └── 08_External_CIN_Analysis.R: Profiling cervical intraepithelial neoplasia (CIN) characteristics in coinfections by analyzing the microarray 
 						dataset of laser-captured epithelium from 128 CIN samples downloaded from the GEO 
 						(accession no. GSE63514; Johan A. den Boon et.al 2015, PMID: 26056290)  	
