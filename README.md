@@ -131,9 +131,9 @@ Folders:
       
      - ***04_GSEA_plots.Rmd***: Snippets to visualize the obtained GSEA results.
       
-     - ***05_AdditionalVisualizations_2D.Rmd***: Generating heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
+     - ***05_AdditionalVisualizations_2D.Rmd***: To Generate heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
      	 
-     - ***06_AdditionalVisualizations_3D.Rmd***: Generating heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
+     - ***06_AdditionalVisualizations_3D.Rmd***: To Generate heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
      	 
      - ***07_Helper_functions.R***:Custom functions that can be utilized for mapping agilent probe ID to gene symbols, symbols to entrez ID and also 
 	 					for additional datarepresentation.	    					
