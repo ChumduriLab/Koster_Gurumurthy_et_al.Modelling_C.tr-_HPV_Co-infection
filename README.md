@@ -41,7 +41,7 @@ the unique cellular microenvironment they create, potentially contributing to ne
 
 	
 	
-***Stefanie Koster, Rajendra Kumar Gurumurthy, Naveen Kumar, Pon Ganish Prakash, Jayabhuvaneshwari Dhanraj, Sofia Bayer, Hilmar Berger, 
+*Stefanie Koster, Rajendra Kumar Gurumurthy, Naveen Kumar, Pon Ganish Prakash, Jayabhuvaneshwari Dhanraj, Sofia Bayer, Hilmar Berger, 
 Shilpa Mary Kurian, Marina Drabkina, Hans-Joachim Mollenkopf, Christian Goosmann, Volker Brinkmann, Zachary Nagel, Mandy Mangler, 
 Thomas F Meyer, Cindrilla Chumduri*. (doi: https://doi.org/10.1101/2021.04.15.439996)
 
