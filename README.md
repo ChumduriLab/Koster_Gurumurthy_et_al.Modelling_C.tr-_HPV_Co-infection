@@ -121,21 +121,21 @@ Folders:
 ### File Description:
 
 1. R scripts: 
-     - ***00_Preprocessing_and_QC.Rmd***: Microarray data QC and Preprocessing for hCEcto E6E7 organoids with or without Ctr infection.
+     - ***00_Preprocessing_and_QC.Rmd***: Microarray data QC and preprocessing of hCEcto E6E7 organoids with or without Ctr infection.
       	 
-     - ***01_Diff_Expression_analysis.Rmd***: To perform Differential expression analysis on hCEcto E6E7 organoids with or without Ctr infection. 
+     - ***01_Diff_Expression_analysis.Rmd***: To perform differential expression (DE) analysis on hCEcto E6E7 organoids with or without Ctr infection. 
       
      - ***02_Ctr_HPV_transcription_modules_v2.Rmd***: To infer TF activity, Gene Ontology (GO) terms for Ctr-HPV-coinfection conditions.	 
      
-     - ***03_GSEA_Analysis.Rmd***: GSEA analysis on DGE results obtained for hCEcto E6E7 organoids with or without Ctr infection.
+     - ***03_GSEA_Analysis.Rmd***: GSEA analysis on obtained DE results for hCEcto E6E7 organoids with or without Ctr infection.
       
      - ***04_GSEA_plots.Rmd***: Snippets to visualize the obtained GSEA results.
       
-     - ***05_AdditionalVisualizations_2D.Rmd***: To Generate heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
+     - ***05_AdditionalVisualizations_2D.Rmd***: To generate heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
      	 
-     - ***06_AdditionalVisualizations_3D.Rmd***: To Generate heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
+     - ***06_AdditionalVisualizations_3D.Rmd***: To generate heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
      	 
-     - ***07_Helper_functions.R***:Custom functions that can be utilized for mapping agilent probe ID to gene symbols, symbols to entrez ID and to draw heatmap, expression barplot and fold change barplots (optionally stores TIFF image of final FC barplot) 	    					
+     - ***07_Helper_functions.R***: Custom functions that can be utilized for mapping agilent probe ID to gene symbols, symbols to entrez ID and for drawing heatmap, expression barplot and fold change barplots (optionally stores TIFF image of final FC barplot) 	    					
 						
      - ***08_External_CIN_Analysis.R***: Profiling cervical intraepithelial neoplasia (CIN) characteristics in coinfections by analyzing the microarray 
 						dataset of laser-captured epithelium from 128 CIN samples downloaded from the GEO 
