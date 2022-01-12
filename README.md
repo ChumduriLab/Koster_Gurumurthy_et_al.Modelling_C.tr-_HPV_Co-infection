@@ -137,9 +137,8 @@ Folders:
      	 
      - ***07_Helper_functions.R***: Custom functions that can be utilized for mapping agilent probe ID to gene symbols, symbols to entrez ID and for drawing heatmap, expression barplot and fold change barplots (optionally stores TIFF image of final FC barplot) 	    					
 						
-     - ***08_External_CIN_Analysis.R***: Profiling cervical intraepithelial neoplasia (CIN) characteristics in coinfections by analyzing the microarray 
-						dataset of laser-captured epithelium from 128 CIN samples downloaded from the GEO 
-						(accession no. GSE63514; Johan A. den Boon et.al 2015, PMID: 26056290) 	
+     - ***08_External_CIN_Analysis.R***: Profiling cervical intraepithelial neoplasia (CIN) characteristics in coinfection by analyzing external CIN microarray 
+dataset. Contains all information in order starting from data pre-processing, quality control, normalization, DE until visualization of results.  	
 
 
 
