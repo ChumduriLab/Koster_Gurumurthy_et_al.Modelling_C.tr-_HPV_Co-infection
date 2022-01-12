@@ -16,8 +16,7 @@ the unique cellular microenvironment they create, potentially contributing to ne
 
 
 
-
-[![Biological Theme](MMR_Regulation.PNG)
+![Biological Theme](MMR_Regulation.PNG)
 
 
 
