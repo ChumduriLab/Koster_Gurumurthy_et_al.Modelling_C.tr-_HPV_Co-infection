@@ -177,7 +177,7 @@ https://github.com/ChumduriLab
 
 
 ## Research Group
-<a href="https://www.chumdurilab.org/" rel="Chumduri Lab"><img src="https://static.wixstatic.com/media/bb4d7d_7984734127644b8bbd05a1aacb952289~mv2.png/v1/crop/x_1587,y_3313,w_4969,h_4900/fill/w_72,h_70,al_c,q_85,usm_0.66_1.00_0.01/bb4d7d_7984734127644b8bbd05a1aacb952289~mv2.webp" height="150"></a>
+[![Twitter URL](http://i.imgur.com/wWzX9uB.png)](https://twitter.com/chumduri)
 <a href="https://www.chumdurilab.org/" rel="Chumduri Lab"><img src="https://static.wixstatic.com/media/d77aac_9e37b3da06a741c1911114e7ea43fec5~mv2.jpg/v1/fill/w_1680,h_400,al_t,q_85,usm_0.66_1.00_0.01/d77aac_9e37b3da06a741c1911114e7ea43fec5~mv2.webp" height="150"></a>
 [Chumduri Lab](www.chumdurilab.org)
 
