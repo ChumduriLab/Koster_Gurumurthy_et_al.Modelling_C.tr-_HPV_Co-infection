@@ -19,6 +19,15 @@ Thomas F Meyer, Cindrilla Chumduri*. (doi: https://doi.org/10.1101/2021.04.15.43
 
 
 
+.
+├── build                   # Compiled files (alternatively `dist`)
+├── docs                    # Documentation files (alternatively `doc`)
+├── src                     # Source files (alternatively `lib` or `app`)
+├── test                    # Automated tests (alternatively `spec` or `tests`)
+├── tools                   # Tools and utilities
+├── LICENSE
+└── README.md
+
 
 Files Overview:
 ***********************
