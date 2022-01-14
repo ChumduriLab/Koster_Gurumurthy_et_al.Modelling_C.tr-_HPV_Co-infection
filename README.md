@@ -84,7 +84,7 @@ Folders:
             │       └── 05_AdditionalVisualizations_2D.Rmd
             │       ├── 06_AdditionalVisualizations_3D.Rmd
             │       └── 07_Helper_functions.R	    
-            └── Cervical Intra Epithelia Tissue
+            └─ Cervical Intra Epithelia Tissue
                     └── 08_External_CIN_Analysis.R	
 ```
 
