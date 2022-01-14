@@ -76,16 +76,16 @@ Folders:
 └── Data: Pre-processed, Differential Exp., GSEA RData files are stashed here.
 └── Code: Contains scripts for microarray analysis used in this manuscript.
         └──── Human Ectocervical Organoids
-            │       ├── 00_Preprocessing_and_QC.Rmd
-            │       └── 01_Diff_Expression_analysis.Rmd
-            │       ├── 02_Ctr_HPV_transcription_modules_v2.Rmd
-            │       └── 03_GSEA_Analysis.Rmd
-            │       ├── 04_GSEA_plots.Rmd
-            │       └── 05_AdditionalVisualizations_2D.Rmd
-            │       ├── 06_AdditionalVisualizations_3D.Rmd
-            │       └── 07_Helper_functions.R	    
+            │       	├── 00_Preprocessing_and_QC.Rmd
+            │       	└── 01_Diff_Expression_analysis.Rmd
+            │       	├── 02_Ctr_HPV_transcription_modules_v2.Rmd
+            │       	└── 03_GSEA_Analysis.Rmd
+            │       	├── 04_GSEA_plots.Rmd
+            │       	└── 05_AdditionalVisualizations_2D.Rmd
+            │       	├── 06_AdditionalVisualizations_3D.Rmd
+            │       	└── 07_Helper_functions.R	    
             └─ Cervical Intra Epithelia Tissue
-                    └── 08_External_CIN_Analysis.R	
+                    	└── 08_External_CIN_Analysis.R	
 ```
 
 
