@@ -15,4 +15,5 @@ File Description:
      	 
 06_AdditionalVisualizations_3D.Rmd: To generate heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
      	 
-07_Helper_functions.R: Custom functions that can be utilized for mapping agilent probe ID to gene symbols, symbols to entrez ID and for drawing heatmap, expression barplot and fold change barplots (optionally stores TIFF image of final FC barplot) 
+07_Helper_functions.R: Custom functions that can be utilized for mapping agilent probe ID to gene symbols, symbols to entrez ID and for drawing heatmap, 
+                        expression barplot and fold change barplots (optionally stores TIFF image of final FC barplot) 
