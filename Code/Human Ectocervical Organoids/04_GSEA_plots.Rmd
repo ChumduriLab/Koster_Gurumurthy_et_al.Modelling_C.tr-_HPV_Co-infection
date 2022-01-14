@@ -1,0 +1,129 @@
+---
+title: "MB194 C.tr infection primary cervical cells - GSEA analysis on DGE results - Plots"
+author: "Hilmar Berger"
+output: 
+ html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: false
+    number_sections: true
+    code_folding: hide
+    
+pdf_document:
+    fig_caption: true
+date: "`r format(Sys.time(), '%d %B, %Y %H:%M:%S')`"
+---
+
+```{r, warning=FALSE, message=FALSE}
+rm(list=ls())
+source("/data_genome1/SharedSoftware/inhouse_development/R/FunctionalEnrichmentHelpers.R")
+setwd("/data_genome2/projects/MB194_Cervical_organoids/Microarray/Analysis_Infection/")
+
+#suppressMessages(library(xlsx))
+library(ggplot2)
+library(knitr)
+library(scales)
+library(fgsea)
+library(data.table)
+
+source("./Helper_functions.R")
+
+source("/data_genome1/SharedSoftware/R_scripts_shared/fGSEA_plot_functions.R")
+
+result_folder = paste("./Results",format(Sys.time(), "%Y-%m-%d"),sep="/")
+if (!file.exists(result_folder)) dir.create(result_folder, recursive=T)
+
+set.seed(12345)
+```
+
+# Overview
+
+For analysis, a preranked analysis using the R package fGSEA was used that should give similar results to preranked analysis in standard GSEA. 
+
+
+```{r}
+load("./Results/2019-11-19/DGE_analysis_image.Rdata")
+```
+
+```{r}
+data_generation_date = "2019-11-19"
+output_folder = paste("./Results/data_store",data_generation_date,sep="/")
+GSEA_datafile = file.path(output_folder,"fGSEA_Results.Rdata")
+load(GSEA_datafile)
+load(file.path(output_folder, "Geneset_collections.Rdata"))
+```
+
+
+The plots below use differential gene expression data from 2019-11-19 and GSEA results generated on `r data_generation_date`.
+
+
+# MSigDB gene sets
+
+Since MSigDB gene sets use human gene symbols to map genes to pathways we translated mouse symbols to homologous human symbols using HomologeneDB from NCBI (build 68). 
+
+
+```{r}
+homologene_human_mouse = fread("/data_genome1/References/HomologousGenes/HomoloGene/build68/homologene_9606_10090.txt")
+all_entrez_ids = data.frame(EntrezID=unique(all_results[[1]]$EntrezID))
+all_symbols = data.frame(GeneSymbol=unique(all_results[[1]]$GeneSymbol))
+a1 = merge(all_symbols, homologene_human_mouse[,c("entrez_1","symbol_1","symbol_2"), with=F], by.x="GeneSymbol", by.y="symbol_2", all.x=T, sort=F)
+
+mouse_to_human=a1
+mouse_to_human = subset(mouse_to_human, !is.na(GeneSymbol) & !is.na(symbol_1) & !symbol_1 == "")
+rownames(mouse_to_human) = mouse_to_human$GeneSymbol
+```
+
+
+# Plots for selected gene sets
+
+## Comparison Uninfected_Rspo_KO_vs_WT
+
+
+```{r}
+selected_genesets = c("E2F1_Q6","KEGG_BASE_EXCISION_REPAIR","KEGG_MISMATCH_REPAIR","HALLMARK_E2F_TARGETS")
+```
+
+
+
+```{r}
+selected_comparisons = c("B-2D_Ecto_noE6E7_48h_p.i._vs_UI","I_2D_Ecto_UI_E6E7_vs_noE6E7","C-2D_Ecto_E6E7_48h_p.i._vs_UI","J_2D_Ecto_48hpi_E6E7_vs_noE6E7")
+```
+
+
+```{r}
+
+for (sel_comparison in selected_comparisons) {
+  
+  tmp = all_results[[sel_comparison]]
+  #tmp2 = merge(tmp, mouse_to_human, by="GeneSymbol")
+  #tmp2 = subset(tmp2, !is.na(symbol_1))
+  ranks = unlist(tapply(tmp$t, tmp$GeneSymbol, function(x) x[which(abs(x)==max(abs(x)))] ))
+
+  for (g in selected_genesets) {
+    rr = subset(all_gsea_results[[sel_comparison]], pathway==g)
+    loc = unlist(lapply(gset_collections_human, function(x) grep(paste0("^",g,"$"), names(x))))
+    sel_genes = unlist(gset_collections_human[[names(loc)]][loc])
+    p = myPlotEnrichment(sel_genes, ranks)
+    print(p + ggtitle(paste(g, "-", sel_comparison), paste("FDR=",prettyNum(rr$FDR_global, digits=2),", p=",prettyNum(rr$pval, digits=2), ", ES=",prettyNum(rr$ES, digits=2), ", NES=",prettyNum(rr$NES, digits=2) ) ) )
+    #print(p + ggtitle(g, paste("Adj.pval=",prettyNum(rr$padj, digits=2), "ES=",prettyNum(rr$ES, digits=2), ", NES=",prettyNum(rr$NES, digits=2) ) ) )
+    
+    pdf(file=file.path(result_folder, paste0(sel_comparison,"_",g, ".pdf")), width=8, height = 6)
+  print(p + ggtitle(paste(g, "-", sel_comparison), paste("FDR=",prettyNum(rr$FDR_global, digits=2),", p=",prettyNum(rr$pval, digits=2), ", ES=",prettyNum(rr$ES, digits=2), ", NES=",prettyNum(rr$NES, digits=2) ) ) )
+  #print(p + ggtitle(g, paste("Adj.pval=",prettyNum(rr$padj, digits=2), "ES=",prettyNum(rr$ES, digits=2), ", NES=",prettyNum(rr$NES, digits=2) ) ) )
+  dev.off()
+    
+    
+  }
+}
+```
+
+All plots have been exported to corresponding files in PDF format in folder `r result_folder`.
+
+
+# Software versions
+
+```{r}
+sessionInfo()
+```
+
+

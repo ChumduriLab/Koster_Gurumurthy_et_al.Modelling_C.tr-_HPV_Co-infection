@@ -1,0 +1,689 @@
+---
+title: "Additional Visualizations for 2D conditions"
+author: "Hilmar Berger"
+output:
+ html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: false
+    number_sections: true
+    code_folding: hide
+    
+pdf_document:
+    fig_caption: true
+date: "`r format(Sys.time(), '%d %B, %Y %H:%M:%S')`"
+---
+
+
+```{r, message=FALSE}
+rm(list=ls())
+#source("/data_genome1/SharedSoftware/inhouse_development/R/FunctionalEnrichmentHelpers.R")
+#setwd("/data_genome2/projects/MB194_Cervical_organoids/Microarray/Analysis_Infection/")
+library(limma)
+#suppressMessages(library(xlsx))
+library(data.table)
+library(reshape2)
+library(pheatmap)
+#suppressMessages(library(GSA))
+#library(xtable)
+#suppressMessages(library(gplots))
+#library(impute)
+library(naturalsort)
+
+library(ggplot2)
+
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(ReactomePA)
+
+result_folder = paste("./Results",format(Sys.time(), "%Y-%m-%d"),sep="/")
+if (!file.exists(result_folder)) dir.create(result_folder, recursive=T)
+```
+
+```{r}
+load("./Results/data_store/2019-11-15/MB194_micro_array_preprocessed_data.Rdata")
+load("./Results/2019-11-15/DGE_analysis_image.Rdata")
+```
+
+
+```{r}
+pn2e = unique(subset(normalized$genes, !is.na(EntrezID))[, c("ProbeName","EntrezID")])
+rownames(pn2e) = pn2e$ProbeName
+
+tmp = unique(normalized$genes[, c("ProbeName","GeneSymbol")])
+pn2gs = as.data.frame(tapply(tmp$GeneSymbol, tmp$ProbeName, function(x) paste(x, collapse=",")))
+colnames(pn2gs) = "GeneSymbol"
+
+tmp = unique(subset(normalized$genes, !is.na(EntrezID))[, c("GeneSymbol","EntrezID")])
+e2gs = as.data.frame(tapply(tmp$GeneSymbol, tmp$EntrezID, function(x) paste(x, collapse=",")))
+colnames(e2gs) = "GeneSymbol"
+```
+
+
+```{r}
+analysis_name = "2D"
+
+sel_comparisons = c("B-2D_Ecto_noE6E7_48h_p.i._vs_UI","C-2D_Ecto_E6E7_48h_p.i._vs_UI","I_2D_Ecto_UI_E6E7_vs_noE6E7",     "J_2D_Ecto_48hpi_E6E7_vs_noE6E7")
+
+baseline_condition = "2D-UI-48h-noE6E7-Ecto"
+sel_cells = "2D"
+sel_timepoint = "48h"
+
+ctr_inf_effect_comp = "B-2D_Ecto_noE6E7_48h_p.i._vs_UI"
+HPV_effect_comp = "I_2D_Ecto_UI_E6E7_vs_noE6E7"
+
+description_text = "2D Ecto cells (NI, 48h p.i. C.tr, 48h p.i. C.tr + E6/E7, E6/E7 alone)"
+```
+
+```{r}
+get_ge_mat_standardized_probe <- function(probes, sel_samples = NULL, baseline_cond=baseline_condition) {
+  sel_probe_flag = normalized$genes$ProbeName %in% probes
+  tmp_mat = normalized$E[sel_probe_flag,]
+  tmp_mat_avg = avereps(tmp_mat, normalized$genes$ProbeName[sel_probe_flag])
+
+  if(is.null(sel_samples)) sel_samples = rownames(subset(ed, Site=="Ecto" & cells==sel_cells & Time.p.i. %in% sel_timepoint))
+  
+  sel_mat = tmp_mat_avg[, sel_samples]
+  na_rows = apply(is.na(sel_mat), 1, sum)>0
+  sel_mat = sel_mat[!na_rows,]
+  
+  baseline_samples = rownames(subset(ed, Condition == baseline_cond ))
+  baseline = rowMeans(sel_mat[, baseline_samples], na.rm = T)
+  sd_row = apply(sel_mat, 1, sd, na.rm=T)
+  sel_mat_std = sweep(sweep(sel_mat, 1, baseline, "-"), 1, sd_row, "/")
+  
+  ed_sel = ed[sel_samples,]
+  return(list(sel_mat_std, ed_sel))
+}
+
+get_ge_mat_standardized_gene <- function(genes, sel_samples = NULL, baseline_cond=baseline_condition) {
+  sel_probe_flag = normalized$genes$GeneSymbol %in% genes
+  tmp_mat = normalized$E[sel_probe_flag,]
+  tmp_mat_avg = avereps(tmp_mat, normalized$genes$GeneSymbol[sel_probe_flag])
+  
+    if(is.null(sel_samples)) sel_samples = rownames(subset(ed, Site=="Ecto" & cells==sel_cells & Time.p.i. %in% sel_timepoint))
+  
+  sel_mat = tmp_mat_avg[, sel_samples]
+  na_rows = apply(is.na(sel_mat), 1, sum)>0
+  sel_mat = sel_mat[!na_rows,]
+  
+  baseline_samples = rownames(subset(ed, Condition == baseline_cond ))
+  baseline = rowMeans(sel_mat[, baseline_samples], na.rm = T)
+  sd_row = apply(sel_mat, 1, sd, na.rm=T)
+  sel_mat_std = sweep(sweep(sel_mat, 1, baseline, "-"), 1, sd_row, "/") 
+  ed_sel = ed[sel_samples,]
+  return(list(sel_mat_std, ed_sel))
+}
+
+```
+
+
+
+# Heatmap of differentially expressed genes
+
+We will visualize diffential expression in `r description_text`.
+
+All genes differentially expressed with FDR < 5% and |log2FC| > 1 between any of those conditions will be used.
+
+```{r}
+all_dge_genes = list()
+
+for (sc in sel_comparisons) {
+  tmp = all_results[[sc]]
+  tmp_dge = subset(tmp, adj.P.Val < 0.05 & abs(logFC)> 1)
+  tmp_dge$comparison = sc
+  all_dge_genes[[sc]] = tmp_dge
+}
+
+all_dge_genes_df = do.call(rbind, all_dge_genes)
+
+all_dge_genes_unique = as.data.frame(tapply(substr(all_dge_genes_df$comparison, 1,1), all_dge_genes_df$GeneSymbol, paste, collapse=","), stringsAsFactors=F)
+colnames(all_dge_genes_unique) = "Comparison"
+all_dge_genes_unique$GeneSymbol =  rownames(all_dge_genes_unique)
+
+all_dge_genes_unique_entrez = as.data.frame(tapply(substr(all_dge_genes_df$comparison, 1,1), all_dge_genes_df$EntrezID, paste, collapse=","), stringsAsFactors=F)
+colnames(all_dge_genes_unique_entrez) = "Comparison"
+
+all_dge_genes_unique_entrez$EntrezID =  rownames(all_dge_genes_unique_entrez)
+
+all_dge_genes_unique_probe = as.data.frame(tapply(substr(all_dge_genes_df$comparison, 1,1), all_dge_genes_df$ProbeName, paste, collapse=","), stringsAsFactors=F)
+colnames(all_dge_genes_unique_probe) = "Comparison"
+
+all_dge_genes_unique_probe$ProbeName =  rownames(all_dge_genes_unique_probe)
+```
+
+## All replicates `r sel_cells` Ecto with `48 p.i.`r sel_timepoint` C.tr / UI +/- HPV E6E7
+
+### Averaged by gene
+
+```{r, fig.height=10, fig.width=14}
+
+tmp = get_ge_mat_standardized_gene(all_dge_genes_unique$GeneSymbol)
+sel_mat_std = tmp[[1]]
+ed_sel = tmp[[2]]
+
+
+ed_sel$HPV = factor(ed_sel$HPV, levels=c("noE6E7", "E6E7"))
+ed_sel$Infection = factor(ed_sel$Infection, levels=c("UI","Ctr"))
+col_anno= ed_sel[, c("HPV","Infection")]
+colorder = rownames(ed_sel[order(ed_sel$HPV, ed_sel$Infection),])
+  
+breaks_new =c(-5,-2.1, seq(-2,2,4/96) ,2.1, 5)
+res_corr = pheatmap(sel_mat_std[, colorder], annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, cluster_cols = F, breaks=breaks_new, main=paste(analysis_name,"infection"), clustering_distance_rows = "correlation", silent=TRUE)
+
+ct = cutree(res_corr$tree_row, k = 10)
+corr.clust <- as.data.frame(ct)
+corr.clust$ct = as.character(corr.clust$ct)
+
+pheatmap(sel_mat_std[, colorder], annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, cluster_cols = F, breaks=breaks_new, main=paste(analysis_name,"infection"), clustering_distance_rows = "correlation", annotation_row = corr.clust)
+
+# breaks_new =c(-5,-2.1, seq(-2,2,4/96) ,2.1, 5)
+# pheatmap(sel_mat_std, annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, breaks=breaks_new, main="All biological replicates")
+
+```
+
+<!-- ## All replicates 2D Ecto with 5d p.i. C.tr / UI +/- HPV E6E7 -->
+
+<!-- ```{r, fig.height=10, fig.width=14} -->
+<!-- sel_probe_flag = normalized$genes$GeneSymbol %in% all_dge_genes_unique$GeneSymbol -->
+<!-- tmp_mat = normalized$E[sel_probe_flag,] -->
+<!-- tmp_mat_avg = avereps(tmp_mat, normalized$genes$GeneSymbol[sel_probe_flag]) -->
+
+<!-- sel_samples = rownames(subset(ed, Site=="Ecto" & cells=="2D" & Time.p.i. %in% c("48h") & Patient == "hc63")) -->
+
+<!-- sel_mat = tmp_mat_avg[, sel_samples] -->
+<!-- na_rows = apply(is.na(sel_mat), 1, sum)>0 -->
+<!-- sel_mat = sel_mat[!na_rows,] -->
+
+<!-- col_anno= ed[sel_samples, c("Site","HPV","Infection")] -->
+
+<!-- breaks_new =c(-5,-2.1, seq(-2,2,4/96) ,2.1, 5) -->
+<!-- pheatmap(sel_mat, annotation_col = col_anno, scale="row", show_rownames = F, show_colnames = F, breaks=breaks_new, main="Only hc63 replicates", clustering_distance_rows = "correlation") -->
+
+<!-- ``` -->
+
+### By Probe
+
+```{r, fig.height=10, fig.width=14}
+tmp = get_ge_mat_standardized_probe(all_dge_genes_unique_probe$ProbeName)
+sel_mat_std = tmp[[1]]
+ed_sel = tmp[[2]]
+
+ed_sel$HPV = factor(ed_sel$HPV, levels=c("noE6E7", "E6E7"))
+ed_sel$Infection = factor(ed_sel$Infection, levels=c("UI","Ctr"))
+col_anno= ed_sel[, c("HPV","Infection")]
+colorder = rownames(ed_sel[order(ed_sel$HPV, ed_sel$Infection),])
+
+breaks_new =c(-5,-2.1, seq(-2,2,4/96) ,2.1, 5)
+res_corr = pheatmap(sel_mat_std[, colorder], annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, cluster_cols = F, breaks=breaks_new, main="", clustering_distance_rows = "correlation", silent=TRUE)
+
+ct = cutree(res_corr$tree_row, k = 8)
+corr.clust <- as.data.frame(ct)
+roworder = order(corr.clust$ct)
+corr.clust$ct = as.character(corr.clust$ct)
+#corr.clust$venn = ifelse(rownames(corr.clust) %in% xx3$ProbeName, "X","O")
+
+anno_colors = list("venn"=c("X"="black","O"="white"))
+
+breaks_new =c(-5,-1.1, seq(-1,1,2/96) ,1.1, 5)
+pheatmap(sel_mat_std[roworder, colorder], annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, cluster_cols = F, cluster_rows=F, breaks=breaks_new, main=paste(analysis_name,"infection"), clustering_distance_rows = "correlation", annotation_row = corr.clust, annotation_colors = anno_colors)
+
+#pheatmap(sel_mat_std[, colorder], annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, cluster_cols = F, breaks=breaks_new, main="Only hc63 replicates")
+
+```
+
+
+```{r}
+tmp = as.data.frame(sel_mat_std[roworder, colorder])
+colnames(tmp) = ed[colnames(tmp), "ShortID"]
+tmp_w_clust = merge(tmp, corr.clust, by.x=0, by.y=0, all.x=T, sort=F)
+mat_w_clust = data.frame(GeneSymbol = pn2gs[tmp_w_clust$Row.names, "GeneSymbol"], tmp_w_clust)
+fwrite(mat_w_clust, file=file.path(result_folder, paste0("HM_",analysis_name,"_values_and_clusters.txt")), sep="\t", quote=F)
+```
+
+
+```{r}
+genes_by_class = split(pn2e[rownames(corr.clust),"EntrezID"], factor(corr.clust$ct))
+genes_by_class = lapply(genes_by_class, function(x) unique(x[!is.na(x)]))
+```
+
+
+#### Enrichment GO 
+
+```{r, fig.height=10, fig.width=14}
+ck_go <- compareCluster(geneCluster = genes_by_class, fun = "enrichGO", OrgDb="org.Hs.eg.db", ont="BP")
+dotplot(ck_go) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+#### Enrichment KEGG
+
+```{r, fig.height=10, fig.width=14}
+ck_kegg <- compareCluster(geneCluster = genes_by_class, fun = "enrichKEGG")
+dotplot(ck_kegg) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+#### Enrichment Reactome
+
+```{r, fig.height=10, fig.width=14}
+ck_reactome <- compareCluster(geneCluster = genes_by_class, fun = "enrichPathway")
+dotplot(ck_reactome) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+```{r}
+ck_go@compareClusterResult$database = "GO"
+ck_kegg@compareClusterResult$database="KEGG"
+ck_reactome@compareClusterResult$database = "REACTOME"
+
+HM_cluster_enrichment = rbind(ck_go@compareClusterResult, ck_kegg@compareClusterResult, ck_reactome@compareClusterResult)
+
+
+HM_cluster_enrichment$GeneSymbols = gs = Map(function(x) {sapply(strsplit(x,"/"), function(y) sort(paste(e2gs[y,"GeneSymbol"], collapse=",")))}, HM_cluster_enrichment$geneID )
+cc = colnames(HM_cluster_enrichment)
+sel_cols = c("Cluster","database")
+sel_cols = append(sel_cols, cc[!cc %in% sel_cols & !cc =="geneID"])
+fwrite(HM_cluster_enrichment[, sel_cols], file=file.path(result_folder,paste0("Heatmap_",analysis_name,"_enrichment.txt")), sep="\t", quote=F)
+
+```
+
+
+
+# DGE Venn
+
+First part: `r ctr_inf_effect_comp`
+second part: `r HPV_effect_comp`
+
+```{r}
+all_dge_genes_df$direction = with(all_dge_genes_df, ifelse(logFC>0,"Up","Down"))
+
+tmp = subset(all_dge_genes_df, comparison %in% c(ctr_inf_effect_comp, HPV_effect_comp))
+tmp2 = dcast(tmp, ProbeName ~ comparison, value.var="direction")
+tmp2$group = paste(tmp2[[ctr_inf_effect_comp]], tmp2[[HPV_effect_comp]], sep="__")
+
+genes_by_class = split(pn2e[tmp2$ProbeName,"EntrezID"], factor(tmp2$group))
+genes_by_class = lapply(genes_by_class, function(x) unique(x[!is.na(x)]))
+```
+
+
+### By Probe
+
+```{r, fig.height=10, fig.width=14}
+tmp = get_ge_mat_standardized_probe(tmp2$ProbeName)
+sel_mat_std = tmp[[1]]
+ed_sel = tmp[[2]]
+
+ed_sel$HPV = factor(ed_sel$HPV, levels=c("noE6E7", "E6E7"))
+ed_sel$Infection = factor(ed_sel$Infection, levels=c("UI","Ctr"))
+col_anno= ed_sel[, c("HPV","Infection")]
+colorder = rownames(ed_sel[order(ed_sel$HPV, ed_sel$Infection),])
+
+breaks_new =c(-5,-2.1, seq(-2,2,4/96) ,2.1, 5)
+res_corr = pheatmap(sel_mat_std[, colorder], annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, cluster_cols = F, breaks=breaks_new, main="", clustering_distance_rows = "correlation", silent=TRUE)
+
+ct = cutree(res_corr$tree_row, k = 8)
+corr.clust <- as.data.frame(ct)
+corr.clust$ct = as.character(corr.clust$ct)
+
+anno_row = tmp2[, "group", drop=F]
+rownames(anno_row) = tmp2$ProbeName
+
+roworder = order(anno_row[rownames(sel_mat_std),"group"])
+
+anno_colors = list("venn"=c("X"="black","O"="white"))
+
+breaks_new =c(-5,-1.1, seq(-1,1,2/96) ,1.1, 5)
+pheatmap(sel_mat_std[roworder, colorder], annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, cluster_cols = F, cluster_rows=F, breaks=breaks_new, main=paste0(analysis_name,", groups by DGE log2FC"), clustering_distance_rows = "correlation", annotation_row = anno_row, annotation_colors = anno_colors)
+
+# pheatmap(sel_mat_std[roworder, colorder], annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, cluster_cols = F, cluster_rows=T, breaks=breaks_new, main="2D, gruops by DGE log2FC", clustering_distance_rows = "correlation", annotation_row = anno_row, annotation_colors = anno_colors)
+
+
+#pheatmap(sel_mat_std[, colorder], annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, cluster_cols = F, breaks=breaks_new, main="Only hc63 replicates")
+
+```
+
+#### Enrichment GO 
+
+```{r, fig.height=10, fig.width=14}
+
+ck_go <- compareCluster(geneCluster = genes_by_class, fun = "enrichGO", OrgDb="org.Hs.eg.db", ont="BP")
+dotplot(ck_go) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+#### Enrichment KEGG
+
+```{r, fig.height=10, fig.width=14}
+
+ck_kegg <- compareCluster(geneCluster = genes_by_class, fun = "enrichKEGG")
+dotplot(ck_kegg, showCategory = 15) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+#### Enrichment Reactome
+
+```{r, fig.height=10, fig.width=14}
+ck_reactome <- compareCluster(geneCluster = genes_by_class, fun = "enrichPathway")
+dotplot(ck_reactome) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+```{r}
+ck_go@compareClusterResult$database = "GO"
+ck_kegg@compareClusterResult$database="KEGG"
+ck_reactome@compareClusterResult$database = "REACTOME"
+
+HM_cluster_enrichment = rbind(ck_go@compareClusterResult, ck_kegg@compareClusterResult, ck_reactome@compareClusterResult)
+
+
+HM_cluster_enrichment$GeneSymbols = gs = Map(function(x) {sapply(strsplit(x,"/"), function(y) sort(paste(e2gs[y,"GeneSymbol"], collapse=",")))}, HM_cluster_enrichment$geneID )
+cc = colnames(HM_cluster_enrichment)
+sel_cols = c("Cluster","database")
+sel_cols = append(sel_cols, cc[!cc %in% sel_cols & !cc =="geneID"])
+fwrite(HM_cluster_enrichment[, sel_cols], file=file.path(result_folder,paste0("DGE_",analysis_name,"_enrichment.txt")), sep="\t", quote=F)
+
+```
+
+
+
+
+# GSEA Motifs
+
+Only motif gene sets with global FDR < 5% are included. NES values for distinct motif genesets of the same transcription factor are averaged. 
+
+
+```{r}
+gsea_env = new.env()
+load("./Results/data_store/2019-11-18/fGSEA_Results.Rdata", envir = gsea_env)
+load("./Results/data_store/2019-11-18/Geneset_collections.Rdata", envir=gsea_env)
+all_gsea_results = get("all_gsea_results", gsea_env)
+```
+
+```{r}
+all_gsea = list()
+
+for (sc in sel_comparisons) {
+  tmp = all_gsea_results[[sc]]
+  tmp = subset(tmp, FDR_global < 0.05 & GeneSetCollection == "MOTIF")
+  tmp$comparison = sc
+  all_gsea[[sc]] = tmp
+}
+
+all_motif_df = do.call(rbind, all_gsea)
+
+# Extract the TF/MIR name from the gene set names
+tmp = strsplit(all_motif_df$pathway, "_")
+ll = unlist(lapply(tmp, length))
+last_token = unlist(sapply(tmp, function(x) x[length(x)]))
+last_token_length = unlist(sapply(tmp, function(x) nchar(x[length(x)])))
+first_token_length = unlist(sapply(tmp, function(x) nchar(x[1])))
+all_motif_df$class = ifelse(grepl("MIR|LET", last_token), "MIR", ifelse(grepl("UNKNOWN",last_token), "UNKNOWN","TF") )
+
+# table(ll, first_token_length, all_motif_df$class)
+# this heuristic seems to split consistently those motif set names which have a motif in the first token and TF name in the second one ("A") and those where the first token is the TF name ("B")
+TF_name_type = ifelse(all_motif_df$class=="TF", ifelse(ll > 2 & first_token_length>=6, "A","B"), "C")
+
+all_motif_df$name = with(all_motif_df, 
+                         ifelse(class =="MIR",
+                                unlist(sapply(tmp, function(x) paste(x[2:length(x)], collapse="_"))),
+                                ifelse(class=="UNKNOWN",
+                                       "UNKNOWN", 
+                                       ifelse(TF_name_type == "A", 
+                                              unlist(sapply(tmp, `[`,2 )),
+                                              unlist(sapply(tmp, `[`,1 )) ) 
+                                       )
+                                ) ) 
+
+
+all_motifs_unique = as.data.frame(tapply(substr(all_motif_df$comparison, 1,1), all_motif_df$name, paste, collapse=","), stringsAsFactors=F)
+colnames(all_motifs_unique) = "Comparison"
+all_motifs_unique$name =  rownames(all_motifs_unique)
+
+```
+
+```{r}
+motif_tab_NES_all = dcast(subset(all_motif_df, name != "UNKNOWN"),  name ~ comparison, fun.aggregate = mean, value.var = "NES")
+
+motif_tab_NES_TF = dcast(subset(all_motif_df, class == "TF"),  name ~ comparison, fun.aggregate = mean, value.var = "NES")
+motif_tab_NES_MIR = dcast(subset(all_motif_df, class == "MIR"),  name ~ comparison, fun.aggregate = mean, value.var = "NES")
+
+write.table(motif_tab_NES_all, file=file.path(result_folder, paste0("MOTIF_NES_MEAN_Ecto_",analysis_name,".txt")), sep="\t", row.names=F, quote=F)
+```
+
+
+```{r, fig.width=12, fig.height=16}
+tmp = as.matrix(motif_tab_NES_TF[, 2:ncol(motif_tab_NES_TF)])
+rownames(tmp) = motif_tab_NES_TF$name
+tmp[is.na(tmp)] <- 0
+motif_matrix_NES_TF = tmp
+
+pheatmap(motif_matrix_NES_TF, fontsize_row = 6, main="NES for all TF")
+```
+
+```{r, fig.width=12, fig.height=8}
+hc =  hclust(dist(motif_matrix_NES_TF))
+
+# Top two clusters
+ct = cutree(hc, k=2)
+table(ct)
+
+mm_cluster2 = motif_matrix_NES_TF[names(ct[ct==1]),]
+pheatmap(mm_cluster2, main="NES E6/E7 Cluster")
+```
+
+<!-- ```{r, fig.width=12, fig.height=8} -->
+<!-- tmp = motif_matrix_NES_TF -->
+<!-- tmp = tmp[tmp[, "L_3D_Ecto_5dpi_E6E7_vs_noE6E7"]< -1 & tmp[,"K_3D_Ecto_UI_E6E7_vs_noE6E7"]>=0,] -->
+
+<!-- pheatmap(tmp, fontsize_row = 8, main="Differentially enriched cluster in 5d p.i. in +E6E7 vs. -E6E7 (comparison L)") -->
+<!-- ``` -->
+
+<!-- ```{r, fig.width=8, fig.height=6} -->
+<!-- tmp = motif_matrix_NES_TF -->
+<!-- tmp = tmp[tmp[, "E-3D_Ecto_noE6E7_5d_p.i._vs_UI"]> 1 & tmp[,"F-3D_Ecto_E6E7_5d_p.i._vs_UI"]<=0,] -->
+
+<!-- pheatmap(tmp, fontsize_row = 8, main="Upregulated motif sets upon C.tr infection in -E6E7 but not in +E6E7 (comparison E vs. F)") -->
+<!-- ``` -->
+
+
+<!-- ```{r, fig.width=12, fig.height=8} -->
+<!-- tmp = motif_matrix_NES_TF -->
+<!-- tmp = tmp[tmp[, "E-3D_Ecto_noE6E7_5d_p.i._vs_UI"]<=0 & tmp[,"F-3D_Ecto_E6E7_5d_p.i._vs_UI"]>1,] -->
+
+<!-- pheatmap(tmp, fontsize_row = 8, main="Upreguled motif sets upon C.tr infection in +E6E7 but not in -E6E7 (comparison E vs. F)") -->
+<!-- ``` -->
+
+```{r, fig.width=12, fig.height=16}
+tmp = as.matrix(motif_tab_NES_MIR[, 2:ncol(motif_tab_NES_MIR)])
+rownames(tmp) = motif_tab_NES_MIR$name
+tmp[is.na(tmp)] <- 0
+motif_matrix_NES_MIR = tmp
+
+pheatmap(motif_matrix_NES_MIR, fontsize_row = 6, main="NES for all MIRs")
+```
+
+# Specific target genes
+
+```{r}
+gsets_human = get("gset_collections_human", gsea_env)
+```
+
+
+```{r}
+hc_to_mat <- function(ph_res, orig_mat) {
+  row_order = ph_res$tree_row$order
+  col_order = ph_res$tree_col$order
+  tmp1 = orig_mat[, col_order]
+  tmp1_avg = avearrays(tmp1, ed[colnames(tmp1), "Condition"])
+  
+  hm_cluster = cutree(ph_res$tree_row, k = 10)
+  tmp = cbind(tmp1_avg, as.data.frame(hm_cluster))
+  
+  mat_ordered = tmp[row_order, ]
+  ff = factor(mat_ordered[, "hm_cluster"], levels=unique(mat_ordered[, "hm_cluster"]) )
+  ff2 = as.character(as.numeric(ff))
+  mat_ordered[, "hm_cluster"] = factor(ff2, levels=naturalsort(unique(ff2)))
+  
+  return(mat_ordered)
+}
+```
+
+## E2F targets
+
+We take all target genes of MOTIF E2F1* gene sets. 
+
+```{r, fig.height=10, fig.width=14}
+tmp = gsets_human[["MOTIF"]]
+nn = names(tmp)[grepl("^E2F1",names(tmp))]
+
+gg = unique(sort(unlist(tmp[nn])))
+
+tmp = get_ge_mat_standardized_gene(gg)
+sel_mat_std = tmp[[1]]
+ed_sel = tmp[[2]]
+
+col_anno= ed_sel[, c("HPV","Infection")]
+
+breaks_new =c(-5,-2.1, seq(-2,2,4/96) ,2.1, 5)
+pp = pheatmap(sel_mat_std, annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, breaks=breaks_new, main="E2F1 target genes", clustering_distance_rows = "correlation")
+
+mat_new = hc_to_mat(pp, sel_mat_std)
+row_anno =  mat_new[, 5, drop=F]
+pheatmap(mat_new[, 1:4], cluster_col=F, cluster_row=F, annotation_row =row_anno, main="clusters, samples are averaged by condition")
+
+write.table(mat_new, file=file.path(result_folder, "HM_2D_E2F_targets_clusters_and_genes.txt"), sep="\t", quote=F, row.names=T, col.names = NA)
+
+```
+
+MsigDB Motif gene sets used: `r paste(nn, collapse=", ")`
+
+
+## TP53 targets
+
+### HALLMARK_P53_PATHWAY 
+
+We take all target genes of HALLMARK_P53_PATHWAYgene set. 
+
+```{r, fig.height=10, fig.width=14}
+tmp = gsets_human[["HALLMARK"]]
+nn = "HALLMARK_P53_PATHWAY"
+
+gg = unique(sort(unlist(tmp[nn])))
+
+tmp = get_ge_mat_standardized_gene(gg)
+sel_mat_std = tmp[[1]]
+ed_sel = tmp[[2]]
+
+col_anno= ed_sel[, c("HPV","Infection")]
+breaks_new =c(-5,-2.1, seq(-2,2,4/96) ,2.1, 5)
+pp = pheatmap(sel_mat_std, annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, breaks=breaks_new, main="HALLMARK TP53 target genes")
+
+mat_new = hc_to_mat(pp, sel_mat_std)
+row_anno =  mat_new[, 5, drop=F]
+pheatmap(mat_new[, 1:4], cluster_col=F, cluster_row=F, annotation_row =row_anno, main="clusters, samples are averaged by condition")
+
+write.table(mat_new, file=file.path(result_folder, "HM_2D_HALLMARK_TP53_clusters_and_genes.txt"), sep="\t", quote=F, row.names=T, col.names = NA)
+
+
+```
+
+MsigDB Motif gene sets used: `r paste(nn, collapse=", ")`
+
+### FISCHER_DIRECT_P53_TARGETS_META_ANALYSIS  
+
+We take all target genes of FISCHER_DIRECT_P53_TARGETS_META_ANALYSIS gene set. 
+
+```{r, fig.height=10, fig.width=14}
+tmp = gsets_human[["PATHWAYS"]]
+
+nn = "FISCHER_DIRECT_P53_TARGETS_META_ANALYSIS"
+
+gg = unique(sort(unlist(tmp[nn])))
+
+tmp = get_ge_mat_standardized_gene(gg)
+sel_mat_std = tmp[[1]]
+ed_sel = tmp[[2]]
+
+col_anno= ed_sel[, c("HPV","Infection")]
+
+breaks_new =c(-5,-2.1, seq(-2,2,4/96) ,2.1, 5)
+pp = pheatmap(sel_mat_std, annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, breaks=breaks_new, main=paste(nn,"target genes"))
+
+mat_new = hc_to_mat(pp, sel_mat_std)
+row_anno =  mat_new[, 5, drop=F]
+pheatmap(mat_new[, 1:4], cluster_col=F, cluster_row=F, annotation_row =row_anno, main="clusters, samples are averaged by condition")
+
+write.table(mat_new, file=file.path(result_folder, "HM_2D_FISCHER_DIRECT_TP53_targets_clusters_and_genes.txt"), sep="\t", quote=F, row.names=T, col.names = NA)
+
+
+```
+
+MsigDB Motif gene sets used: `r paste(nn, collapse=", ")`
+
+### FISCHER_DREAM_TARGETS   
+
+We take all target genes of FISCHER_DREAM_TARGETS  gene set. 
+
+```{r, fig.height=10, fig.width=14}
+tmp = gsets_human[["PATHWAYS"]]
+nn = "FISCHER_DREAM_TARGETS"
+
+gg = unique(sort(unlist(tmp[nn])))
+
+tmp = get_ge_mat_standardized_gene(gg)
+sel_mat_std = tmp[[1]]
+ed_sel = tmp[[2]]
+
+col_anno= ed_sel[, c("HPV","Infection")]
+
+breaks_new =c(-5,-2.1, seq(-2,2,4/96) ,2.1, 5)
+pp = pheatmap(sel_mat_std, annotation_col = col_anno, scale="none", show_rownames = F, show_colnames = F, breaks=breaks_new, main=paste(nn,"target genes"))
+
+mat_new = hc_to_mat(pp, sel_mat_std)
+row_anno =  mat_new[, 5, drop=F]
+pheatmap(mat_new[, 1:4], cluster_col=F, cluster_row=F, annotation_row =row_anno, main="clusters, samples are averaged by condition")
+
+write.table(mat_new, file=file.path(result_folder, "HM_2D_FISCHER_DREAM_targets_clusters_and_genes.txt"), sep="\t", quote=F, row.names=T, col.names = NA)
+```
+
+MsigDB Motif gene sets used: `r paste(nn, collapse=", ")`
+
+
+<!-- # Enrichment Analysis (clusterProfiler) -->
+
+
+<!-- ```{r} -->
+<!-- tmp = all_dge_genes_df -->
+<!-- tmp$dge_status = with(tmp, ifelse(adj.P.Val < 0.05, ifelse(logFC > 1, "Up",ifelse(logFC < -1, "Down", "NS")), "NS")) -->
+
+<!-- tmp$class = paste(tmp$comparison, tmp$dge_status, sep="__") -->
+
+<!-- genes_by_class = with(subset(tmp, !is.na(EntrezID)), split(EntrezID, class) ) -->
+<!-- ``` -->
+
+<!-- ## GO -->
+
+<!-- ```{r, fig.height=10, fig.width=14} -->
+
+<!-- ck <- compareCluster(geneCluster = genes_by_class, fun = "enrichGO", OrgDb="org.Hs.eg.db", ont="BP") -->
+<!-- dotplot(ck) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) -->
+
+<!-- ``` -->
+
+<!-- ## KEGG -->
+
+<!-- ```{r, fig.height=10, fig.width=14} -->
+
+<!-- ck <- compareCluster(geneCluster = genes_by_class, fun = "enrichKEGG") -->
+<!-- dotplot(ck) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) -->
+
+<!-- ``` -->
+
+<!-- ## Reactome -->
+
+<!-- ```{r, fig.height=10, fig.width=14} -->
+<!-- library(ReactomePA) -->
+<!-- ck <- compareCluster(geneCluster = genes_by_class, fun = "enrichPathway") -->
+<!-- dotplot(ck) + theme(axis.text.x = element_text(angle = 90, hjust = 1)) -->
+
+<!-- ``` -->
+

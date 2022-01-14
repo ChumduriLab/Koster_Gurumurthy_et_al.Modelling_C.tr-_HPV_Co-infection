@@ -1,0 +1,320 @@
+---
+title: "MB194 C.tr infection primary cervical cells - Differential gene expression analysis"
+author: "Hilmar Berger"
+output: 
+ html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: false
+    number_sections: true
+    code_folding: hide
+    
+pdf_document:
+    fig_caption: true
+date: "`r format(Sys.time(), '%d %B, %Y %H:%M:%S')`"
+---
+
+```{r, message=FALSE}
+rm(list=ls())
+source("/data_genome1/SharedSoftware/inhouse_development/R/FunctionalEnrichmentHelpers.R")
+setwd("/data_genome2/projects/MB194_Cervical_organoids/Microarray/Analysis_Infection/")
+library(limma)
+#suppressMessages(library(xlsx))
+library(reshape2)
+library(pheatmap)
+#suppressMessages(library(GSA))
+library(xtable)
+#suppressMessages(library(gplots))
+#library(impute)
+suppressMessages(library(data.table))
+library(ggplot2)
+load("./Results/data_store/2018-07-04/MB194_micro_array_preprocessed_data.Rdata")
+
+result_folder = paste("./Results",format(Sys.time(), "%Y-%m-%d"),sep="/")
+if (!file.exists(result_folder)) dir.create(result_folder, recursive=T)
+```
+
+# Additional gene annotations
+
+We add information on predicted secreted genes (http://www.proteinatlas.org/humanproteome/secretome#prediction; downloaded from the Human Protein Atlas on 2018-03-16) and tag genes as ligand or receptor based on a ligand-receptor list from Ramilowski et al (NATURE COMMUNICATIONS 2014, DOI: 10.1038/ncomms8866) as annotation to the output.
+
+```{r}
+secreted_genes = fread("gzip -dc /data_genome2/References/Protein_Atlas/Predicted_secreted_2018-03-16.tsv.gz", header=T)
+
+normalized$genes$secreted_protein = (normalized$genes$GeneSymbol %in% secreted_genes$Gene)
+
+ligand_recptor_pairs = fread("/data_genome1/References/GeneSets/Ligand_Receptor_pairs/all_ligand_receptor_pairs.txt.csv", header=T)
+
+all_ligands = unique(sort(ligand_recptor_pairs$Ligand.ApprovedSymbol))
+all_receptors = unique(sort(ligand_recptor_pairs$Receptor.ApprovedSymbol))
+
+normalized$genes$ligand = (normalized$genes$GeneSymbol %in% all_ligands)
+normalized$genes$receptor = (normalized$genes$GeneSymbol %in% all_receptors)
+```
+
+
+# Data overview
+
+## Multi-dimensional Scaling (MDS) on normalized data
+
+```{r}
+cp = palette(rainbow(8))
+data_inp = t(normalized$E) 
+
+d <- dist(data_inp) # euclidean distances between the rows
+fit <- cmdscale(d,eig=TRUE, k=2) # k is the number of dim
+
+# plot solution
+x <- fit$points[,1]
+y <- fit$points[,2]
+gg = factor(ed[rownames(data_inp),]$Condition)
+col=cp[as.numeric(gg)]
+plot(x, y, xlab="Coordinate 1", ylab="Coordinate 2", main="Metric MDS, all samples", type="p", pch=as.numeric(factor(ed[rownames(data_inp),]$Experiment))+19, col=col, xlim=c(min(x), max(x)+100)  )
+text(x,y,labels=ed[rownames(data_inp),]$ShortID, col=col, adj=-0.05 )
+abline(h=0, lty=2)
+abline(v=0, lty=2)
+legend("bottomleft", legend=levels(gg), fill=cp[as.numeric(factor(levels(gg), levels=levels(gg)))])
+```
+
+### Only Ectocervical samples, 2D
+
+```{r}
+cp = palette(rainbow(8))
+sel_samples = rownames(subset(ed, Site=="Ecto" & cells=="2D"))
+data_inp = t(normalized$E[, sel_samples]) 
+
+d <- dist(data_inp) # euclidean distances between the rows
+fit <- cmdscale(d,eig=TRUE, k=2) # k is the number of dim
+
+# plot solution
+x <- fit$points[,1]
+y <- fit$points[,2]
+gg = factor(ed[rownames(data_inp),]$Condition)
+col=cp[as.numeric(gg)]
+plot(x, y, xlab="Coordinate 1", ylab="Coordinate 2", main="Metric MDS, all samples", type="p", pch=as.numeric(factor(ed[rownames(data_inp),]$Experiment))+19, col=col, xlim=c(min(x), max(x)+100)  )
+text(x,y,labels=ed[rownames(data_inp),]$ShortID, col=col, adj=-0.05 )
+abline(h=0, lty=2)
+abline(v=0, lty=2)
+legend("bottomright", legend=levels(gg), fill=cp[as.numeric(factor(levels(gg), levels=levels(gg)))])
+```
+
+### Only Ectocervical samples, 3D
+
+```{r}
+cp = palette(rainbow(8))
+sel_samples = rownames(subset(ed, Site=="Ecto" & cells=="3D"))
+data_inp = t(normalized$E[, sel_samples]) 
+
+d <- dist(data_inp) # euclidean distances between the rows
+fit <- cmdscale(d,eig=TRUE, k=2) # k is the number of dim
+
+# plot solution
+x <- fit$points[,1]
+y <- fit$points[,2]
+gg = factor(ed[rownames(data_inp),]$Condition)
+col=cp[as.numeric(gg)]
+plot(x, y, xlab="Coordinate 1", ylab="Coordinate 2", main="Metric MDS, all samples", type="p", pch=as.numeric(factor(ed[rownames(data_inp),]$Experiment))+19, col=col, xlim=c(min(x), max(x)+100)  )
+text(x,y,labels=ed[rownames(data_inp),]$ShortID, col=col, adj=-0.05 )
+abline(h=0, lty=2)
+abline(v=0, lty=2)
+legend("bottomright", legend=levels(gg), fill=cp[as.numeric(factor(levels(gg), levels=levels(gg)))])
+```
+
+
+### Only Endocervical samples, 3D
+
+
+```{r}
+cp = palette(rainbow(8))
+sel_samples = rownames(subset(ed, Site=="Endo" & cells=="3D"))
+data_inp = t(normalized$E[, sel_samples]) 
+
+d <- dist(data_inp) # euclidean distances between the rows
+fit <- cmdscale(d,eig=TRUE, k=2) # k is the number of dim
+
+# plot solution
+x <- fit$points[,1]
+y <- fit$points[,2]
+gg = factor(ed[rownames(data_inp),]$Condition)
+col=cp[as.numeric(gg)]
+plot(x, y, xlab="Coordinate 1", ylab="Coordinate 2", main="Metric MDS, all samples", type="p", pch=as.numeric(factor(ed[rownames(data_inp),]$Experiment))+19, col=col, xlim=c(min(x), max(x)+100)  )
+text(x,y,labels=ed[rownames(data_inp),]$ShortID, col=col, adj=-0.05 )
+abline(h=0, lty=2)
+abline(v=0, lty=2)
+legend("bottomright", legend=levels(gg), fill=cp[as.numeric(factor(levels(gg), levels=levels(gg)))])
+```
+
+
+## Expression analysis outline
+The preprocessing and QC of the micro array data from MB194 was performed as described in a separate document.
+
+Differential expression will be analysed in the following way:
+
+For each of the selected comparisons we compare the replicates of the target condition to the correspondig control using LIMMA, producing differential expression statistics for all genes and comparisons.
+Analysis is perfomed as separate two group comparisons within the comparisons of condition to the corresponding baseline.
+Conditions are compared separately for experimental batches A (FBO) and B (MEV).
+All result tables are available as separate Excel files.
+
+## Differential expression overview
+
+The following comparisons are performed:
+
+Paired comparisons:--
+2D, Ecto, no E6E7: C.tr 36h p.i. vs. UI [A-2D_Ecto_noE6E7_36h_p.i._vs_UI]
+2D, Ecto, no E6E7: C.tr 48h p.i. vs. UI [B-2D_Ecto_noE6E7_48h_p.i._vs_UI]
+2D, Ecto, with E6E7: C.tr 48h p.i. vs. UI [C-2D_Ecto_E6E7_48h_p.i._vs_UI]
+3D, Ecto, no E6E7: C.tr 1d p.i. vs. UI [D-3D_Ecto_noE6E7_1d_p.i._vs_UI]
+3D, Ecto, no E6E7: C.tr 5d p.i. vs. UI [E-3D_Ecto_noE6E7_5d_p.i._vs_UI]
+3D, Ecto, with E6E7: C.tr 5d p.i. vs. UI [F-3D_Ecto_E6E7_5d_p.i._vs_UI]
+3D, Endo, no E6E7: C.tr 5d p.i. vs. UI [G-3D_Endo_E6E7_5d_p.i._vs_UI]
+Unpaired comparisons:--
+2D, Ecto, UI: With E6E7 vs. no E6E7 [I_2D_Ecto_UI_E6E7_vs_noE6E7]
+2D, Ecto, C.tr 48h p.i.: With E6E7 vs. no E6E7 [J_2D_Ecto_48hpi_E6E7_vs_noE6E7]
+3D, Ecto, UI: With E6E7 vs. no E6E7 (only samples from second batch, i.e. hc63) [K_3D_Ecto_UI_E6E7_vs_noE6E7]
+3D, Ecto, C.tr 5d p.i.: With E6E7 vs. no E6E7 (only samples from second batch, i.e. hc63) [L_3D_Ecto_5dpi_E6E7_vs_noE6E7]
+3D, Ecto, with E6E7+C.tr 5d p.i vs. UI (only samples from second batch, i.e. hc63) [M_3D_Ecto_5dpi_E6E7_vs_UInoE6E7]
+
+
+```{r}
+limma_paired_fun = function(treat_group,control_group) {
+  sel_samples = rownames(subset(ed, Condition %in% c(treat_group, control_group) ))
+  edata = normalized[,sel_samples]
+  treatment = factor(ed[sel_samples,]$Condition, levels=c(control_group,treat_group))
+  ExpID = factor(ed[sel_samples,]$Replicate)
+  ff = formula(~ ExpID + treatment)
+  
+  design = model.matrix(ff,  contrasts.arg=list(treatment=contr.treatment))
+  
+  fit <- lmFit(edata,design)
+  fit <- eBayes(fit)
+  res = topTable(fit, coef="treatment2", adjust="BH", number=nrow(edata), confint = T)
+  return(res)
+}
+
+##############################################################################
+# Paired comparisons
+##############################################################################
+
+treatment = "2D-Ctr-36h-noE6E7-Ecto"
+control = "2D-UI-36h-noE6E7-Ecto"
+
+all_results[["A-2D_Ecto_noE6E7_36h_p.i._vs_UI"]] = limma_paired_fun(treatment, control)
+
+```
+
+```{r}
+treatment = "2D-Ctr-48h-noE6E7-Ecto"
+control = "2D-UI-48h-noE6E7-Ecto"
+
+all_results[["B-2D_Ecto_noE6E7_48h_p.i._vs_UI"]] = limma_paired_fun(treatment, control)
+
+```
+
+
+```{r}
+treatment = "2D-Ctr-48h-E6E7-Ecto"
+control = "2D-UI-48h-E6E7-Ecto"
+
+all_results[["C-2D_Ecto_E6E7_48h_p.i._vs_UI"]] = limma_paired_fun(treatment, control)
+
+```
+
+```{r}
+treatment = "3D-Ctr-1d-noE6E7-Ecto"
+control = "3D-UI-1d-noE6E7-Ecto"
+
+all_results[["D-3D_Ecto_noE6E7_1d_p.i._vs_UI"]] = limma_paired_fun(treatment, control)
+
+```
+
+```{r}
+treatment = "3D-Ctr-5d-noE6E7-Ecto"
+control = "3D-UI-5d-noE6E7-Ecto"
+
+all_results[["E-3D_Ecto_noE6E7_5d_p.i._vs_UI"]] = limma_paired_fun(treatment, control)
+
+```
+
+
+
+
+```{r}
+treatment = "3D-Ctr-5d-E6E7-Ecto"
+control = "3D-UI-5d-E6E7-Ecto"
+
+all_results[["F-3D_Ecto_E6E7_5d_p.i._vs_UI"]] = limma_paired_fun(treatment, control)
+```
+
+
+
+
+```{r}
+treatment = "3D-Ctr-5d-noE6E7-Endo"
+control = "3D-UI-5d-noE6E7-Endo"
+
+all_results[["G-3D_Endo_E6E7_5d_p.i._vs_UI"]] = limma_paired_fun(treatment, control)
+```
+
+
+
+```{r}
+#############################################
+# unpaired comparisons
+#############################################
+sel_conditions = c("2D-Ctr-48h-E6E7-Ecto","2D-Ctr-48h-noE6E7-Ecto","2D-UI-48h-E6E7-Ecto","2D-UI-48h-noE6E7-Ecto",
+               "3D-Ctr-5d-E6E7-Ecto","3D-Ctr-5d-noE6E7-Ecto","3D-UI-5d-E6E7-Ecto","3D-UI-5d-noE6E7-Ecto")
+sel_samples = rownames(subset(ed, Condition %in% sel_conditions & substr(Number, 1, 1) != "H"))
+edata = normalized[,sel_samples]
+TS = with(ed[sel_samples,], factor(make.names(paste(Condition))) )
+ff = formula(~ 0 + TS)
+
+design = model.matrix(ff)
+colnames(design) = gsub("^TS","",colnames(design), perl=T)
+fit <- lmFit(edata,design)
+```
+
+
+```{r}
+contr.matrix = makeContrasts( I_2D_Ecto_UI_E6E7_vs_noE6E7 = X2D.UI.48h.E6E7.Ecto - X2D.UI.48h.noE6E7.Ecto,
+                              J_2D_Ecto_48hpi_E6E7_vs_noE6E7 = X2D.Ctr.48h.E6E7.Ecto - X2D.Ctr.48h.noE6E7.Ecto,
+                              K_3D_Ecto_UI_E6E7_vs_noE6E7 = X3D.UI.5d.E6E7.Ecto - X3D.UI.5d.noE6E7.Ecto,
+                              L_3D_Ecto_5dpi_E6E7_vs_noE6E7 = X3D.Ctr.5d.E6E7.Ecto - X3D.Ctr.5d.noE6E7.Ecto,
+                              M_3D_Ecto_5dpi_E6E7_vs_UInoE6E7 = X3D.Ctr.5d.E6E7.Ecto - X3D.UI.5d.noE6E7.Ecto,
+                              levels=design)
+
+fit2 <- contrasts.fit(fit, contr.matrix)
+fit2 <- eBayes(fit2)
+
+for (c in colnames(contr.matrix)) {
+  res = topTable(fit2, coef=c, adjust="BH", number=nrow(edata), confint = T)
+  all_results[[c]] = res
+}
+```
+
+
+### Volcano plots
+
+#### Adjusted P-values
+
+For each comparison, the distribution of the fold change (on a log2 scale) and adjusted p-value (on reverse logarithmical scale) is shown in a volcano plot. The red line denotes the FDR cutoff of 0.05.
+
+```{r}
+all_target_conditions = names(all_results)
+par(mfrow=c(3,3))
+
+par(cex.sub=1.4)
+for (tc in all_target_conditions) {
+  r = all_results[[tc]]
+  plot(r$logFC, -log10(r$adj.P.Val),xlab="log2 Fold Change",ylab="-log10(adj. p-val)", ylim=c(0,max(2,max(-log10(r$adj.P.Val),na.rm=T))))
+  title(main=tc, sub=paste("(",nrow(subset(r, adj.P.Val < 0.05))," signif. DE genes)",sep="") )
+  abline(h=-log10(0.05),col="red")
+}
+```
+
+
+# Software versions
+
+```{r}
+sessionInfo()
+```
+

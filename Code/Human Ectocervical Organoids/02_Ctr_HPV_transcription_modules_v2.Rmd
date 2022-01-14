@@ -1,0 +1,391 @@
+---
+title: "Ctr-HPV-coinfection transcriptional modules"
+author: "Hilmar Berger"
+output: 
+ html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: false
+    number_sections: true
+    code_folding: hide
+    
+pdf_document:
+    fig_caption: true
+date: "`r format(Sys.time(), '%d %B, %Y %H:%M:%S')`"
+---
+
+```{r, message=FALSE}
+library(limma)
+library(data.table)
+library(reshape2)
+library(pheatmap)
+
+library(ggplot2)
+
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(ReactomePA)
+
+result_folder = paste("./Results",format(Sys.time(), "%Y-%m-%d"),sep="/")
+if (!file.exists(result_folder)) dir.create(result_folder, recursive=T)
+```
+
+# Introduction
+
+In this document we will generate summary tables which desribe differences between effects of C.tr alone, HPV E6/E7 alone or coinfection. For each of the conditions, the (co-)infected cells are compared to the non-infected baseline  (ie. condition with no Ctr and no E6E7) or E6E7 transfected cells. 2D and 3D cellular models are analyzed separately. 
+
+For each cellular models, we classifiy each item (gene, gene set or regulon) regarding its result in C.tr alone, coinfection or E6E7 alone in a single class (e.g. Up-Down-Down). Corresponding tables are generated and for genes an enrichment is run for each class. 
+
+```{r}
+dge_comparisons = list("2D" = list("Ctr"="B-2D_Ecto_noE6E7_48h_p.i._vs_UI",
+                              "HPV"="I_2D_Ecto_UI_E6E7_vs_noE6E7",
+                              "CtrHPVCo_vs_E6E7alone"="C-2D_Ecto_E6E7_48h_p.i._vs_UI"), 
+                       "3D"=list("Ctr"="E-3D_Ecto_noE6E7_5d_p.i._vs_UI" ,
+                                 "HPV"="K_3D_Ecto_UI_E6E7_vs_noE6E7",
+                                 "CtrHPVCo_vs_E6E7alone"="F-3D_Ecto_E6E7_5d_p.i._vs_UI"))
+```
+
+Those are the contrasts used for 2D and 3D cellular models (names refer to comparisons as defined in differential gene expression documents).
+
+```{r}
+tmp = t(as.data.frame(dge_comparisons))
+rownames(tmp) = gsub("^X","", rownames(tmp))
+colnames(tmp) = "Comparison"
+tmp
+```
+
+
+```{r}
+dge_env = new.env()
+load("./Results/2019-11-19/DGE_analysis_image.Rdata", envir = dge_env)
+
+gsea_env = new.env()
+load("./Results/data_store/2019-11-19/fGSEA_Results.Rdata", envir=gsea_env)
+load("./Results/data_store/2019-11-19/Geneset_collections.Rdata", envir=gsea_env)
+
+dorothea_env = new.env()
+load("./Results/2019-11-19/dorothea_results.Rdata", envir=dorothea_env)
+```
+
+
+# DGE
+
+```{r}
+all_results = get("all_results", dge_env)
+all_DE_results_tmp = list()
+sel_comparisons = unlist(dge_comparisons)
+
+for (nn in names(sel_comparisons)) {
+  tc = sel_comparisons[nn]
+  tmp = all_results[[tc]]
+  tmp$condition = nn
+  all_DE_results_tmp[[tc]] = tmp
+}
+all_DE_results_ts = do.call(rbind, all_DE_results_tmp)
+
+all_DE_results_ts$DE_class = ifelse(all_DE_results_ts$adj.P.Val>0.05, "n.s.", ifelse(all_DE_results_ts$logFC > 0,"Up","Down"))
+agg_fun = function(x) ifelse("Up" %in% x & "Down" %in% x, "UpDown", ifelse(!any(x %in% c("Up","Down")), "n.s", paste(unique(x[x!="n.s."]),collapse=";") ) )
+#agg_fun = function(x) ifelse("Down" %in% x, "Down",ifelse("Up" %in% x, "Up","n.s."))
+
+all_DE_results_sw = dcast(subset(all_DE_results_ts,grepl("protein_coding",Transcript_Type)), GeneSymbol + EntrezID ~ condition, value.var="DE_class", fun.aggregate=agg_fun)
+
+#all_DE_results_FC_p = dcast.data.table(as.data.table(all_DE_results_ts), GeneSymbol+ProbeName ~ condition, value.var=c("logFC","P.Value","adj.P.Val"))
+
+cols_2D = colnames(all_DE_results_sw)[grepl("2D", colnames(all_DE_results_sw))]
+cols_3D = colnames(all_DE_results_sw)[grepl("3D", colnames(all_DE_results_sw))]
+
+all_DE_results_sw$class_2D = apply(all_DE_results_sw[, cols_2D], 1, paste, collapse="_" ) 
+all_DE_results_sw$class_3D = apply(all_DE_results_sw[, cols_3D], 1, paste, collapse="_" ) 
+all_DE_results_sw$class_equal_2D_3D = (all_DE_results_sw$class_2D == all_DE_results_sw$class_3D)
+  
+e2gs  = tapply(all_DE_results_sw$GeneSymbol, all_DE_results_sw$EntrezID, paste, collapse=",")
+
+```
+
+## Overview
+
+### 2D classes
+
+Classes are C.tr infection alone - Coinfection - HPV E6/E7 alone
+
+```{r}
+table(all_DE_results_sw$class_2D)
+```
+
+### 3D classes
+
+Classes are C.tr infection alone - Coinfection - HPV E6/E7 alone
+
+```{r}
+table(all_DE_results_sw$class_3D)
+```
+
+```{r}
+ofile = file.path(result_folder, "DGE_Ctr_HPV_coinfection_2D_3D_classification.txt")
+write.table(all_DE_results_sw, ofile,sep="\t", row.names=F, quote=F)
+```
+
+Table was written to `r ofile`.
+
+For further analysis, we exclude all subclasses that have less than or equal to 20 genes and all that have conflicting (UpDown) results for probes within the same gene. 
+
+```{r}
+genes_by_class_2D = with(subset(all_DE_results_sw, !grepl("UpDown",class_2D) & !is.na(EntrezID)), split(EntrezID, class_2D) )
+genes_by_class_2D = genes_by_class_2D[lapply(genes_by_class_2D, length)>20]
+genes_by_class_3D = with(subset(all_DE_results_sw, !grepl("UpDown",class_3D) & !is.na(EntrezID)), split(EntrezID, class_3D) )
+genes_by_class_3D = genes_by_class_3D[lapply(genes_by_class_3D, length)>20]
+```
+
+## ClusterProfiler enrichment
+
+### 2D
+
+#### Enrichment GO 
+
+```{r, fig.height=13, fig.width=14}
+
+ck_go <- compareCluster(geneCluster = genes_by_class_2D, fun = "enrichGO", OrgDb="org.Hs.eg.db", ont="BP")
+dotplot(ck_go) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+#### Enrichment KEGG
+
+```{r, fig.height=13, fig.width=14}
+
+ck_kegg <- compareCluster(geneCluster = genes_by_class_2D, fun = "enrichKEGG")
+dotplot(ck_kegg, showCategory = 15) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+#### Enrichment Reactome
+
+```{r, fig.height=12, fig.width=18}
+ck_reactome <- compareCluster(geneCluster = genes_by_class_2D, fun = "enrichPathway")
+dotplot(ck_reactome) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+```{r}
+analysis_name = "2D"
+
+ck_go@compareClusterResult$database = "GO"
+ck_kegg@compareClusterResult$database="KEGG"
+ck_reactome@compareClusterResult$database = "REACTOME"
+
+HM_cluster_enrichment = rbind(ck_go@compareClusterResult, ck_kegg@compareClusterResult, ck_reactome@compareClusterResult)
+
+
+HM_cluster_enrichment$GeneSymbols = gs = Map(function(x) {sapply(strsplit(x,"/"), function(y) sort(paste(e2gs[y], collapse=",")))}, HM_cluster_enrichment$geneID )
+cc = colnames(HM_cluster_enrichment)
+sel_cols = c("Cluster","database")
+sel_cols = append(sel_cols, cc[!cc %in% sel_cols & !cc =="geneID"])
+
+ofile = file.path(result_folder,paste0("DGE_",analysis_name,"_enrichment.txt"))
+fwrite(HM_cluster_enrichment[, sel_cols], file=ofile, sep="\t", quote=F)
+
+```
+
+Enrichment results were written to `r ofile`
+
+### 3D
+
+#### Enrichment GO 
+
+```{r, fig.height=12, fig.width=14}
+
+ck_go <- compareCluster(geneCluster = genes_by_class_3D, fun = "enrichGO", OrgDb="org.Hs.eg.db", ont="BP")
+dotplot(ck_go) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+#### Enrichment KEGG
+
+```{r, fig.height=12, fig.width=14}
+
+ck_kegg <- compareCluster(geneCluster = genes_by_class_3D, fun = "enrichKEGG")
+dotplot(ck_kegg, showCategory = 15) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+#### Enrichment Reactome
+
+```{r, fig.height=12, fig.width=18}
+ck_reactome <- compareCluster(geneCluster = genes_by_class_3D, fun = "enrichPathway")
+dotplot(ck_reactome) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+```{r}
+analysis_name = "3D"
+
+ck_go@compareClusterResult$database = "GO"
+ck_kegg@compareClusterResult$database="KEGG"
+ck_reactome@compareClusterResult$database = "REACTOME"
+
+HM_cluster_enrichment = rbind(ck_go@compareClusterResult, ck_kegg@compareClusterResult, ck_reactome@compareClusterResult)
+
+
+HM_cluster_enrichment$GeneSymbols = gs = Map(function(x) {sapply(strsplit(x,"/"), function(y) sort(paste(e2gs[y], collapse=",")))}, HM_cluster_enrichment$geneID )
+cc = colnames(HM_cluster_enrichment)
+sel_cols = c("Cluster","database")
+sel_cols = append(sel_cols, cc[!cc %in% sel_cols & !cc =="geneID"])
+
+ofile = file.path(result_folder,paste0("DGE_",analysis_name,"_enrichment.txt"))
+fwrite(HM_cluster_enrichment[, sel_cols], file=ofile, sep="\t", quote=F)
+```
+
+Enrichment results were written to `r ofile`
+
+
+# GSEA
+
+```{r}
+all_gsea_results = get("all_gsea_results",gsea_env)
+
+all_gsea_results_tmp = list()
+sel_comparisons = unlist(dge_comparisons)
+
+for (nn in names(sel_comparisons)) {
+  tc = sel_comparisons[nn]
+  tmp = all_gsea_results[[tc]]
+  tmp$comparison = nn
+  all_gsea_results_tmp[[tc]] = tmp
+}
+all_gsea_results_ts = do.call(rbind, all_gsea_results_tmp)
+
+all_gsea_results_ts$gsea_class = ifelse(all_gsea_results_ts$FDR_global > 0.05, "n.s.", ifelse(all_gsea_results_ts$NES > 0,"Up","Down"))
+
+#agg_fun = function(x) ifelse("Up" %in% x & "Down" %in% x, "UpDown", ifelse(!any(x %in% c("Up","Down")), "n.s", paste(unique(x[x!="n.s."]),collapse=";") ) )
+#agg_fun = function(x) ifelse("Down" %in% x, "Down",ifelse("Up" %in% x, "Up","n.s."))
+
+all_gsea_results_sw = dcast(all_gsea_results_ts, GeneSetCollection + pathway ~ comparison, value.var="gsea_class")
+
+all_gsea_results_sw = all_gsea_results_sw[apply(all_gsea_results_sw[, names(sel_comparisons)]=="n.s.", 1, sum)<length(sel_comparisons),]
+
+cols_2D = colnames(all_gsea_results_sw)[grepl("2D", colnames(all_gsea_results_sw))]
+cols_3D = colnames(all_gsea_results_sw)[grepl("3D", colnames(all_gsea_results_sw))]
+
+all_gsea_results_sw$class_2D = apply(all_gsea_results_sw[, cols_2D], 1, paste, collapse="_" ) 
+all_gsea_results_sw$class_3D = apply(all_gsea_results_sw[, cols_3D], 1, paste, collapse="_" ) 
+all_gsea_results_sw$class_equal_2D_3D = (all_gsea_results_sw$class_2D == all_gsea_results_sw$class_3D)
+
+```
+
+## Overview
+
+### 2D classes
+
+Classes are C.tr infection alone - Coinfection - HPV E6/E7 alone
+
+```{r}
+table(all_gsea_results_sw$class_2D)
+```
+
+### 3D classes
+
+Classes are C.tr infection alone - Coinfection - HPV E6/E7 alone
+
+```{r}
+table(all_gsea_results_sw$class_3D)
+```
+
+
+```{r}
+ofile = file.path(result_folder, "GSEA_Ctr_HPV_coinfection_2D_3D_classification.txt")
+write.table(all_gsea_results_sw, ofile,sep="\t", row.names=F, quote=F)
+
+```
+
+Table was written to `r ofile`.
+
+# Dorothea
+
+```{r}
+all_dorothea_results_complete = get("all_dorothea_results",dorothea_env)
+dorothea_res_tabs = list()
+
+for (aa in names(all_dorothea_results_complete)) {
+  
+  all_dorothea_results = all_dorothea_results_complete[[aa]]
+  
+  all_dorothea_results_tmp = list()
+  sel_comparisons = unlist(dge_comparisons)
+  
+  for (nn in names(sel_comparisons)) {
+    tc = sel_comparisons[nn]
+    tmp = all_dorothea_results[[tc]]
+    tmp$comparison = nn
+    all_dorothea_results_tmp[[tc]] = tmp
+  }
+  all_dorothea_results_ts = do.call(rbind, all_dorothea_results_tmp)
+  
+  all_dorothea_results_ts$dorothea_class = ifelse(all_dorothea_results_ts$FDR > 0.05, "n.s.", ifelse(all_dorothea_results_ts$NES > 0,"Up","Down"))
+  
+  all_dorothea_results_sw = dcast(all_dorothea_results_ts, Regulon ~ comparison, value.var="dorothea_class")
+  
+  all_dorothea_results_sw = all_dorothea_results_sw[apply(all_dorothea_results_sw[, names(sel_comparisons)]=="n.s.", 1, sum)<length(sel_comparisons),]
+  
+  cols_2D = colnames(all_dorothea_results_sw)[grepl("2D", colnames(all_dorothea_results_sw))]
+  cols_3D = colnames(all_dorothea_results_sw)[grepl("3D", colnames(all_dorothea_results_sw))]
+  
+  all_dorothea_results_sw$class_2D = apply(all_dorothea_results_sw[, cols_2D], 1, paste, collapse="_" ) 
+  all_dorothea_results_sw$class_3D = apply(all_dorothea_results_sw[, cols_3D], 1, paste, collapse="_" ) 
+  all_dorothea_results_sw$class_equal_2D_3D = (all_dorothea_results_sw$class_2D == all_dorothea_results_sw$class_3D)
+  
+  dorothea_res_tabs[[aa]] = all_dorothea_results_sw
+  
+  ofile = file.path(result_folder, paste0("Dorothea_",aa,"_Ctr_HPV_coinfection_2D_3D_classification.txt"))
+  cat(paste(ofile,"\n"))
+  write.table(all_dorothea_results_sw, ofile,sep="\t", row.names=F, quote=F)
+}
+
+```
+
+
+## Overview for Level B Dorothea results
+
+### 2D classes
+
+Classes are C.tr infection alone - Coinfection - HPV E6/E7 alone
+
+```{r}
+table(dorothea_res_tabs[["LevelB"]]$class_2D)
+```
+
+```{r, fig.height=16}
+tmp = as.matrix(dorothea_res_tabs[["LevelB"]][,cols_2D])
+tmp = ifelse(tmp=="Up",1,ifelse(tmp=="Down",-1,0))
+rownames(tmp) = dorothea_res_tabs[["LevelB"]]$Regulon
+
+row_anno = dorothea_res_tabs[["LevelB"]][, "class_2D", drop=F]
+rownames(row_anno) = dorothea_res_tabs[["LevelB"]]$Regulon
+
+pheatmap(tmp, annotation_row = row_anno, cluster_cols = F, main="Dorothea results 2D", fontsize_col = 20)
+```
+
+### 3D classes
+
+Classes are C.tr infection alone - Coinfection - HPV E6/E7 alone
+
+```{r}
+table(dorothea_res_tabs[["LevelB"]]$class_3D)
+```
+
+```{r, fig.height=16}
+tmp = as.matrix(dorothea_res_tabs[["LevelB"]][,cols_3D])
+tmp = ifelse(tmp=="Up",1,ifelse(tmp=="Down",-1,0))
+rownames(tmp) = dorothea_res_tabs[["LevelB"]]$Regulon
+
+row_anno = dorothea_res_tabs[["LevelB"]][, "class_3D", drop=F]
+rownames(row_anno) = dorothea_res_tabs[["LevelB"]]$Regulon
+
+pheatmap(tmp, annotation_row = row_anno, cluster_cols = F, main="Dorothea results 3D", fontsize_col = 20)
+```
+
+# Software versions
+
+```{r}
+sessionInfo()
+```
+

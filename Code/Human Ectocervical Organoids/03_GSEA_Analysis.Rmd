@@ -1,0 +1,291 @@
+---
+title: "MB194 C.tr infection primary cervical cells - GSEA analysis on DGE results"
+author: "Hilmar Berger"
+output: 
+ html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: false
+    number_sections: true
+    code_folding: hide
+    
+pdf_document:
+    fig_caption: true
+date: "`r format(Sys.time(), '%d %B, %Y %H:%M:%S')`"
+---
+
+```{r, warning=FALSE, message=FALSE}
+rm(list=ls())
+#source("/data_genome1/SharedSoftware/inhouse_development/R/FunctionalEnrichmentHelpers.R")
+setwd("/data_genome2/projects/MB194_Cervical_organoids/Microarray/Analysis_Infection/")
+
+#suppressMessages(library(xlsx))
+library(reshape2)
+library(pheatmap)
+library(ggplot2)
+library(knitr)
+library(scales)
+library(fgsea)
+library(data.table)
+library(readxl)
+library(BiocParallel)
+
+#source("./Helper_functions.R")
+
+result_folder = paste("./Results",format(Sys.time(), "%Y-%m-%d"),sep="/")
+if (!file.exists(result_folder)) dir.create(result_folder, recursive=T)
+
+set.seed(12345)
+```
+
+# Overview
+
+This is data from a C.trachomatis infection and controls in HPV E6/E7 positive and negative primary cervix epithelial cells hybridized as single channel libraries to Agilent 048860 micro arrays.
+
+For analysis, a preranked analysis using the R package fGSEA is used that should give similar results to preranked analysis in standard GSEA. 
+
+
+```{r}
+load("./Results/2019-09-18/DGE_analysis_image.Rdata")
+```
+
+# MSigDB gene sets
+
+Since MSigDB gene sets use human gene symbols to map genes to pathways we will translate mouse symbols to homologous human symbols using HomologeneDB from NCBI (build 68).
+
+
+```{r}
+gsea_gmt_folder = "/data_genome1/References/GeneSets/MSigDB/V6.2"
+gsea_gmt_files = c("h.all.v6.2.symbols.gmt","c2.all.v6.2.symbols.gmt","c3.all.v6.2.symbols.gmt","c5.bp.v6.2.symbols.gmt","c6.all.v6.2.symbols.gmt","c7.all.v6.2.symbols.gmt")
+names(gsea_gmt_files) = c("HALLMARK","PATHWAYS","MOTIF","GO_BP","ONCOGENIC","IMMUNOLOGIC")
+gset_collections_human = list()
+for (n in names(gsea_gmt_files)) {
+  gset_collections_human[[n]] = gmtPathways(paste(gsea_gmt_folder, gsea_gmt_files[[n]], sep="/") )
+}
+gsea_gmt_files
+```
+
+
+# Other gene sets
+
+The following additional gene sets are used:
+
+ * Munoz et al Small Intestinal Stem Cell Signature (PMID: 22692129, DOI: 10.1038/emboj.2012.166, Supp Table S3 )
+ * Mallon et al StemCellDB (PMID: 23117585)
+ * Herbst et al Beta-catenine target genes (PMID: 24467841)
+ * Palmer et al ‘Pluripotency’ Signature (PMID: 22909066, DOI: doi: 10.1186/gb-2012-13-8-r71). The modules defined by       * Palmer et al are as follows - 1 - DNA replication / cell cycle module - 2 - RNA transcription / protein synthesis module - 3 -metabolism / hormone signaling / protein synthesis module - 4 - multicellular signaling / immune signaling / cell     identity module
+
+
+```{r}
+known_genes = unique(all_results[[1]]$GeneSymbol)
+
+custom_gene_sets_human = list()
+
+intestinal_sc_sets = gmtPathways("/data_genome1/References/GeneSets/LGR5_StemCellSignature/SC_and_CryptCell_Signatures_human.gmt" )
+custom_gene_sets_human[["Lgr5_SC_Signature_Munoz"]] = intestinal_sc_sets[["Lgr5_SC_Signature_Munoz"]]
+
+beta_cat_genes = as.data.frame(read_excel("/data_genome1/References/GeneSets/LGR5_StemCellSignature/Wnt target H2014 list.xls", sheet = 1, col_names = F))
+
+custom_gene_sets_human[["Herbst_et_al_Beta_catenin_targets"]] = unique(beta_cat_genes$X_1)
+
+# Palmer SC signature
+palmer_sc_sig = read.table("/data_genome1/References/GeneSets/StemCell_Signature_Palmer_et_al_2012.txt", sep="\t", header=T, stringsAsFactors = F)
+
+for (i in c(1:4)) {
+  custom_gene_sets_human[[paste("Palmer_SC_signature_Module_",i)]] = unique(subset(palmer_sc_sig, Modul==i)$GeneSymbol)
+}
+
+# StemCellDB (Mallon et al)
+mallon_sc_sig = read.table("/data_genome1/References/GeneSets/Pluripotency Signature Mallon StemCellDB.csv", sep="\t", header=T, stringsAsFactors = F)
+custom_gene_sets_human[["StemCellDB_signature_Mallon"]] = unique(mallon_sc_sig$Gene)
+
+gset_collections_human[["CUSTOM"]] = custom_gene_sets_human
+
+########################################################################################
+custom_gene_sets_mouse = list()
+
+gset_collections_mouse = list(CUSTOM_MOUSE=custom_gene_sets_mouse)
+```
+
+
+# fGSEA analysis
+
+## Comparison Uninfected_Rspo_KO_vs_WT
+
+```{r}
+homologene_human_mouse = fread("/data_genome1/References/HomologousGenes/HomoloGene/build68/homologene_9606_10090.txt")
+all_entrez_ids = data.frame(EntrezID=unique(all_results[[1]]$EntrezID))
+all_symbols = data.frame(GeneSymbol=unique(all_results[[1]]$GeneSymbol))
+a1 = merge(all_symbols, homologene_human_mouse[,c("entrez_1","symbol_1","symbol_2"), with=F], by.x="GeneSymbol", by.y="symbol_2", all.x=T, sort=F)
+
+mouse_to_human=a1
+mouse_to_human = subset(mouse_to_human, !is.na(GeneSymbol) & !is.na(symbol_1) & !symbol_1 == "")
+rownames(mouse_to_human) = mouse_to_human$GeneSymbol
+```
+
+
+## Human and Mouse gene sets
+For analyzing the human MsigDB gene sets we restrict the DGE data to those probesets that have a homologous gene in mouse and human. For those probesets we select the one with the highest t-score and rank the resulting list which is subsequently used for fGSEA analysis.
+
+For mouse gene sets (i.e. those derived from mouse experiments) we use the full set of genes in the DGE results after collapsing t-scores by gene and ranking.
+
+
+```{r}
+data_generation_date = "2019-09-18"
+output_folder = paste("./Results/data_store",data_generation_date,sep="/")
+GSEA_datafile = paste(output_folder,"fGSEA_Results.Rdata",sep="/")
+if (!file.exists(output_folder)) dir.create(output_folder, recursive=T)
+
+rerun_GSEA = TRUE
+
+if(rerun_GSEA) {
+  all_gsea_results = list()
+  n_perm = 5000
+  n_proc = 8
+  bpparam = MulticoreParam(worker=n_proc, manager.hostname="127.0.0.1")
+  for (n in names(all_results)) {
+    print(paste("Running FGSEA for comparison",n))
+    gsea_result_tables = list()
+    tmp = subset(all_results[[n]], !is.na(GeneSymbol)) # those are mostly control probes
+    
+    # tmp2 = merge(tmp, mouse_to_human, by="GeneSymbol")
+    # tmp2 = subset(tmp2, !is.na(symbol_1))
+    #ranks = unlist(tapply(tmp2$t, tmp2$symbol_1, function(x) x[which(abs(x)==max(abs(x)))] ))
+    ranks = unlist(tapply(tmp$t, tmp$GeneSymbol, function(x) x[which(abs(x)==max(abs(x)))] ))
+  
+    for (gs in names(gset_collections_human)) {
+      print(gs)
+      fgseaRes <- fgsea(gset_collections_human[[gs]], ranks, minSize=15, maxSize=2000, nperm=n_perm, BPPARAM=bpparam)
+      fgseaRes$GeneSetCollection = gs
+      gsea_result_tables[[gs]] = fgseaRes
+    }
+    
+    results_human = do.call(rbind, gsea_result_tables)
+    
+    gsea_result_tables_mouse = list()
+    # ranks_mouse = unlist(tapply(tmp$t, tmp$GeneSymbol, function(x) x[which(abs(x)==max(abs(x)))] ))
+    # 
+    # for (gs in names(gset_collections_mouse)) {
+    #   print(gs)
+    #   fgseaRes <- fgsea(gset_collections_mouse[[gs]], ranks_mouse, minSize=15, maxSize=2000, nperm=n_perm, BPPARAM=bpparam)
+    #   fgseaRes$GeneSetCollection = gs
+    #   gsea_result_tables_mouse[[gs]] = fgseaRes
+    # }
+  
+    results_mouse = do.call(rbind, gsea_result_tables_mouse)
+    results_all = rbind(results_human, results_mouse)
+    results_all$FDR_global = p.adjust(results_all$pval, "BH")
+    
+    all_gsea_results[[n]] = results_all
+  }
+  save(all_gsea_results, file=GSEA_datafile)
+  save(gset_collections_human, gset_collections_mouse, file=file.path(output_folder, "Geneset_collections.Rdata"))
+} else {
+  load(GSEA_datafile)
+}
+```
+
+
+
+Result files are written to folder ./Results/2019-09-18
+We export all gene sets with less than 10% FDR after global adjustment of p-values per sample.
+
+
+
+
+
+
+
+```{r}
+FDR_threshold = 0.1
+if(rerun_GSEA) {
+  output_file_prefix = paste(result_folder,"fGSEA_Results_", sep="/")
+  for (n in names(all_gsea_results)) {
+    filename = paste(output_file_prefix, n, ".txt", sep="" )
+    tmp = all_gsea_results[[n]]
+    tmp$direction= ifelse(tmp$NES > 0, "Up","Down")
+    tmp = tmp[order(tmp$NES, decreasing=T),]
+    tmp$leadingEdge = unlist(lapply(tmp$leadingEdge, function(x) paste(x, collapse=",")))
+    tmp = subset(tmp, FDR_global < FDR_threshold)
+    col_order = c("pathway","GeneSetCollection","direction","pval","padj","ES","NES","nMoreExtreme","size","leadingEdge", "FDR_global")
+    write.table(tmp[,col_order, with=F], file= filename, row.names=F , sep="\t", dec=".", quote=F, na="")
+  }
+  
+  
+  DGE_Excel_filename = paste(result_folder,"fGSEA_Results",sep="/")
+  txt2xlsx_command = paste("python /data_genome1/SharedSoftware/inhouse_development/tools/txt2xlsx.py -o",DGE_Excel_filename," -L", paste(names(all_gsea_results),collapse=","),  paste(paste('"', output_file_prefix, names(all_gsea_results), '.txt"', sep="" ), collapse=" "), sep=" ")
+  system(txt2xlsx_command)
+
+}
+```
+
+
+
+
+```{r}
+if(rerun_GSEA) {
+  output_file_prefix = paste(result_folder,"fGSEA_Results_all_comparisons", sep="/")
+  agr = list()
+  for (n in names(all_gsea_results)) {
+    tmp = all_gsea_results[[n]]
+    tmp$direction= ifelse(tmp$NES > 0, "Up","Down")
+    tmp = tmp[order(tmp$NES, decreasing=T),]
+    tmp$leadingEdge = unlist(lapply(tmp$leadingEdge, function(x) paste(x, collapse=",")))
+    tmp = subset(tmp, padj < 0.05)
+    col_order = c("pathway","GeneSetCollection","direction","pval","padj","ES","NES","nMoreExtreme","size","leadingEdge")
+    tmp$Comparison = n
+    agr[[n]] = tmp
+  }
+  
+  agr_combined = do.call(rbind, agr)
+  
+  filename = paste(output_file_prefix, ".txt", sep="" )
+  write.table(agr_combined, file= filename, row.names=F , sep="\t", dec=".", quote=F, na="")
+  
+  filename = file.path(result_folder,"fGSEA_Results_matrix_NES_FDR_lt_0.05.txt")
+  gsea_mat = dcast(agr_combined, GeneSetCollection + pathway ~ Comparison, value.var = "NES")
+  write.table(gsea_mat, file = filename, row.names=F, sep="\t", dec=".", quote = F, na="")
+  
+}
+```
+
+
+
+```{r}
+gsea_summary = list()
+for (n in names(all_gsea_results)) {
+  tmp = subset(all_gsea_results[[n]], padj < 0.05)
+  r = as.data.frame(table(tmp$GeneSetCollection, ifelse(tmp$ES<0, "Down","Up")))
+  colnames(r) = c("Collection","Direction","Freq")
+  r$Comparison = n
+  gsea_summary[[n]] = r
+}
+
+gsea_summary_df = do.call(rbind, gsea_summary)
+
+ggplot(gsea_summary_df, aes(x=Comparison, y = Freq, fill=Collection)) + geom_bar(stat="identity") + theme_grey(base_size = 14) + theme(axis.text.x = element_text(angle = 60, hjust = 1)) + ggtitle("Number of significant (FDR<5%) gene sets per comparison")
+```
+
+
+
+
+```{r}
+ggplot(gsea_summary_df, aes(x=Comparison, y = Freq, fill=Collection)) + geom_bar(stat="identity") + theme_grey(base_size = 14) + theme(axis.text.x = element_text(angle = 60, hjust = 1)) + ggtitle("Number of significant (FDR<5%) gene sets per comparison") + facet_wrap(~Direction)
+```
+
+
+# Software versions
+
+```{r}
+sessionInfo()
+```
+
+
+
+
+
+
+
+
+
+
