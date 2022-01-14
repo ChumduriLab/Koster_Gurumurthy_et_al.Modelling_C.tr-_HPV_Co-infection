@@ -75,7 +75,7 @@ Thomas F Meyer, Cindrilla Chumduri*. (doi: https://doi.org/10.1101/2021.04.15.43
 Folders:
 └── Data: Pre-processed, Differential Exp., GSEA RData files are stashed here.
 └── Code: Contains scripts for microarray analysis used in this manuscript.
-        └── Human Ectocervical Organoids
+        └──── Human Ectocervical Organoids
             │       ├── 00_Preprocessing_and_QC.Rmd
             │       └── 01_Diff_Expression_analysis.Rmd
             │       ├── 02_Ctr_HPV_transcription_modules_v2.Rmd
