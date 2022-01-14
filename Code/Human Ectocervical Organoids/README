@@ -1,17 +1,17 @@
-### File Description:
-R scripts: 
-     - ***00_Preprocessing_and_QC.Rmd***: Microarray data quality control (QC) and pre-processing of hCEcto E6E7 organoids with or without Ctr infection.
+File Description:
+
+00_Preprocessing_and_QC.Rmd: Microarray data quality control (QC) and pre-processing of hCEcto E6E7 organoids with or without Ctr infection.
       	 
-     - ***01_Diff_Expression_analysis.Rmd***: To perform differential expression (DE) analysis on hCEcto E6E7 organoids with or without Ctr infection. 
+01_Diff_Expression_analysis.Rmd: To perform differential expression (DE) analysis on hCEcto E6E7 organoids with or without Ctr infection. 
       
-     - ***02_Ctr_HPV_transcription_modules_v2.Rmd***: To infer TF activity, Gene Ontology (GO) terms for Ctr-HPV-coinfection conditions.	 
+02_Ctr_HPV_transcription_modules_v2.Rmd: To infer TF activity, Gene Ontology (GO) terms for Ctr-HPV-coinfection conditions.	 
      
-     - ***03_GSEA_Analysis.Rmd***: GSEA analysis on obtained DE results for hCEcto E6E7 organoids with or without Ctr infection.
+03_GSEA_Analysis.Rmd: GSEA analysis on obtained DE results for hCEcto E6E7 organoids with or without Ctr infection.
       
-     - ***04_GSEA_plots.Rmd***: Snippets to visualize the obtained GSEA results.
+04_GSEA_plots.Rmd: Snippets to visualize the obtained GSEA results.
       
-     - ***05_AdditionalVisualizations_2D.Rmd***: To generate heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
+05_AdditionalVisualizations_2D.Rmd: To generate heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
      	 
-     - ***06_AdditionalVisualizations_3D.Rmd***: To generate heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
+06_AdditionalVisualizations_3D.Rmd: To generate heatmaps, venn diagrams and dotplots shown in the manuscript (Fig.3 & 4, Suppl.Fig.3 & 4).
      	 
-     - ***07_Helper_functions.R***: Custom functions that can be utilized for mapping agilent probe ID to gene symbols, symbols to entrez ID and for drawing heatmap, expression barplot and fold change barplots (optionally stores TIFF image of final FC barplot) 
+07_Helper_functions.R: Custom functions that can be utilized for mapping agilent probe ID to gene symbols, symbols to entrez ID and for drawing heatmap, expression barplot and fold change barplots (optionally stores TIFF image of final FC barplot) 
