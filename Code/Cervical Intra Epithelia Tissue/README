@@ -1,5 +1,5 @@
 File Description:
-********************
+*****************
 
 08_External_CIN_Analysis.R: Profiling cervical intraepithelial neoplasia (CIN) characteristics in coinfections by analyzing the microarray 
 			    dataset of laser-captured epithelium from 128 CIN samples downloaded from the GEO 
