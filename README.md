@@ -143,10 +143,9 @@ Folders:
 
 
 ## Contact
-Please email the corresponding author in the main manuscript for other requests!
+*Please email the corresponding author in the main manuscript for other requests!
 
-*For specific queries related to this repository, please contact:*
-https://github.com/--
+
 
 
 ## Research Group
