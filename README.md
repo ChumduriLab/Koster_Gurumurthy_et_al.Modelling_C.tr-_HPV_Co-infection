@@ -141,8 +141,9 @@ Folders:
 
 ## Research Group
 [Chumduri Lab](https://www.chumdurilab.org/)
-![Ectocervix Organoids](Ecto_Organoids.PNG)(https://www.chumdurilab.org/)
 [![Twitter URL](http://i.imgur.com/wWzX9uB.png)](https://twitter.com/chumduri)
+![Ectocervix Organoids](Ecto_Organoids.PNG)(https://www.chumdurilab.org/)
+
 
 
 
