@@ -33,7 +33,7 @@ Coinfections with pathogenic microbes continually confront cervical mucosa, yet 
 	
 *Stefanie Koster, Rajendra Kumar Gurumurthy, Naveen Kumar, Pon Ganish Prakash, Jayabhuvaneshwari Dhanraj, Sofia Bayer, Hilmar Berger, 
 Shilpa Mary Kurian, Marina Drabkina, Hans-Joachim Mollenkopf, Christian Goosmann, Volker Brinkmann, Zachary Nagel, Mandy Mangler, 
-Thomas F Meyer, Cindrilla Chumduri*. (doi: https://doi.org/10.1101/2021.04.15.439996)
+Thomas F Meyer, Cindrilla Chumduri*. (https://doi.org/10.1038/s41467-022-28569-1)
 
 
 
